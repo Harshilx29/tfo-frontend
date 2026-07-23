@@ -1,0 +1,17 @@
+{
+  "name": "Track Manager",
+  "short_name": "Track Manager",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "description": "Production batch tracking system for Winding, TFO, Boiler, Warping and Machine stages.",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
