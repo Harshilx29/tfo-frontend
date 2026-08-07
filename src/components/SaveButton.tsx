@@ -22,7 +22,7 @@ export function SaveButton({
   const [saving, setSaving] = useState(false);
   const [slowSave, setSlowSave] = useState(false);
   const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     return () => {
