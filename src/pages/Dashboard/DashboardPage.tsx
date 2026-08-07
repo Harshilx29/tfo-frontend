@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useApi } from '../../hooks/useApi';
-import { GitBranch, Package, Layers, Flame, Scissors, Settings } from 'lucide-react';
+import { GitBranch, Package, Layers, Flame, Scissors, Settings, Cpu } from 'lucide-react';
+
+interface MachineOccupancyItem {
+  machine_number: number;
+  occupancy_status: 'free' | 'loaded';
+  enabled: boolean;
+}
 
 interface Summary {
   totalBatches: number;
@@ -12,6 +18,12 @@ interface Summary {
     machine: number;
   };
   recentBatches: { uid: string; file_number: string | null; created_at: string }[];
+  machineOccupancy: {
+    total: number;
+    loaded: number;
+    free: number;
+    machines: MachineOccupancyItem[];
+  };
 }
 
 const STAGE_ICONS = {
@@ -82,6 +94,84 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+
+            {/* Machine Occupancy Grid */}
+            {summary.machineOccupancy && summary.machineOccupancy.machines.length > 0 && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <h2 style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.05em', textTransform: 'uppercase', margin: 0 }}>
+                    Machine Occupancy
+                  </h2>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: 'var(--text-muted)' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', display: 'inline-block' }} />
+                      Free: <strong style={{ color: 'var(--text)' }}>{summary.machineOccupancy.free}</strong>
+                    </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--warning)', display: 'inline-block' }} />
+                      Loaded: <strong style={{ color: 'var(--text)' }}>{summary.machineOccupancy.loaded}</strong>
+                    </span>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      of {summary.machineOccupancy.total} active
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(70px, 1fr))',
+                  gap: 8,
+                  marginBottom: 32,
+                }}>
+                  {summary.machineOccupancy.machines.map((m) => {
+                    const isLoaded  = m.occupancy_status === 'loaded';
+                    const isRetired = !m.enabled;
+                    return (
+                      <div
+                        key={m.machine_number}
+                        title={`Machine ${m.machine_number} — ${isRetired ? 'Retired' : isLoaded ? 'Loaded' : 'Free'}`}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '10px 6px',
+                          borderRadius: 'var(--radius-md)',
+                          border: `1.5px solid ${isRetired ? 'var(--border)' : isLoaded ? 'var(--warning)' : 'var(--success)'}`,
+                          background: isRetired
+                            ? 'var(--surface-2)'
+                            : isLoaded
+                            ? 'rgba(var(--warning-rgb, 234, 179, 8), 0.08)'
+                            : 'rgba(var(--success-rgb, 16, 185, 129), 0.06)',
+                          opacity: isRetired ? 0.45 : 1,
+                          transition: 'transform 0.1s',
+                          cursor: 'default',
+                        }}
+                      >
+                        <Cpu
+                          size={16}
+                          style={{
+                            color: isRetired ? 'var(--text-muted)' : isLoaded ? 'var(--warning)' : 'var(--success)',
+                          }}
+                        />
+                        <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>
+                          {m.machine_number}
+                        </span>
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 600,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.03em',
+                          color: isRetired ? 'var(--text-muted)' : isLoaded ? 'var(--warning)' : 'var(--success)',
+                        }}>
+                          {isRetired ? 'OFF' : isLoaded ? 'ON' : 'FREE'}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
 
             {/* Recent batches */}
             {summary.recentBatches.length > 0 && (

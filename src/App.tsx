@@ -25,6 +25,8 @@ import YarnDetail from './pages/Yarn/YarnDetail';
 import YarnFormPage from './pages/Yarn/YarnFormPage';
 import CopColourDirectory from './pages/CopColour/CopColourDirectory';
 import CopColourFormPage from './pages/CopColour/CopColourFormPage';
+import MachineDirectory from './pages/Machine/MachineDirectory';
+import { MachineDataProvider } from './context/MachineDataContext';
 
 const router = createBrowserRouter([
   {
@@ -115,6 +117,10 @@ const router = createBrowserRouter([
         path: 'cop-colors/edit/:id',
         element: <CopColourFormPage />,
       },
+      {
+        path: 'machines',
+        element: <MachineDirectory />,
+      },
     ],
   },
   {
@@ -150,9 +156,11 @@ export default function App() {
           <CompanyDataProvider>
             <YarnDataProvider>
               <CopColourDataProvider>
-                <ToastProvider>
-                  <RouterProvider router={router} />
-                </ToastProvider>
+                <MachineDataProvider>
+                  <ToastProvider>
+                    <RouterProvider router={router} />
+                  </ToastProvider>
+                </MachineDataProvider>
               </CopColourDataProvider>
             </YarnDataProvider>
           </CompanyDataProvider>

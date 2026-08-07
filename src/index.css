@@ -971,8 +971,8 @@ tbody tr:hover { background: var(--surface-2); }
   width: 280px;
   min-width: 280px;
   flex-shrink: 0;
-  background: var(--br-surface);
-  border-right: 1px solid var(--br-line);
+  background: transparent;
+  border-right: none;
   display: flex;
   flex-direction: column;
   padding: 32px 24px;
@@ -1120,7 +1120,7 @@ tbody tr:hover { background: var(--surface-2); }
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  background: var(--br-surface);
+  background: transparent;
 }
 .batch-routing-view .topbar-row {
   display: flex;

@@ -3,6 +3,7 @@ import { useApi } from '../../../hooks/useApi';
 import { useToast } from '../../../context/ToastContext';
 import { SaveButton } from '../../../components/SaveButton';
 import CopColourPicker from '../../../components/CopColourPicker';
+import MachineDropdown from '../../../components/MachineDropdown';
 
 interface Props {
   uid: string;
@@ -13,6 +14,7 @@ interface Props {
 
 interface FormState {
   tfo_no: string;
+  machine_id: string | null;
   loading_date: string;
   unloading_date: string;
   tpm: string;
@@ -25,7 +27,7 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
-  tfo_no: '', loading_date: '', unloading_date: '',
+  tfo_no: '', machine_id: null, loading_date: '', unloading_date: '',
   tpm: '', cops: '', color_s: '', color_s_id: null, color_z: '', color_z_id: null, location: '',
 };
 
@@ -39,6 +41,7 @@ function toForm(data: Record<string, unknown> | null): FormState {
   };
   return {
     tfo_no:         String(data.tfo_no ?? ''),
+    machine_id:     (data.machine_id  as string) ?? null,
     loading_date:   toDatetimeLocal(data.loading_date),
     unloading_date: toDatetimeLocal(data.unloading_date),
     tpm:            String(data.tpm  ?? ''),
@@ -100,6 +103,7 @@ export default function TfoTab({ uid, data, onSaved, onDirtyChange }: Props) {
       cops:           form.cops     ? parseInt(form.cops)     : null,
       loading_date:   form.loading_date   || null,
       unloading_date: form.unloading_date || null,
+      machine_id:     form.machine_id || null,
     };
     await api.put(`/track/${uid}/tfo`, payload);
     addToast('TFO saved', 'success');
@@ -125,15 +129,26 @@ export default function TfoTab({ uid, data, onSaved, onDirtyChange }: Props) {
 
       <div className="form-grid">
         <div className="form-group">
-          <label className="form-label">TFO No</label>
-          <input className="form-input" type="number" value={form.tfo_no} onChange={set('tfo_no')} placeholder="e.g. 12" />
+          <label className="form-label">TFO Machine No</label>
+          <MachineDropdown
+            value={form.tfo_no}
+            valueId={form.machine_id}
+            onChange={(opt) => {
+              setForm((f) => ({
+                ...f,
+                tfo_no:     opt ? String(opt.machine_number) : '',
+                machine_id: opt ? opt.id : null,
+              }));
+            }}
+            placeholder="Select machine..."
+          />
         </div>
         <div className="form-group">
-          <label className="form-label">Loading Date & Time</label>
+          <label className="form-label">Loading Date &amp; Time</label>
           <input className="form-input" type="datetime-local" value={form.loading_date} onChange={set('loading_date')} />
         </div>
         <div className="form-group">
-          <label className="form-label">Unloading Date & Time</label>
+          <label className="form-label">Unloading Date &amp; Time</label>
           <input className="form-input" type="datetime-local" value={form.unloading_date} onChange={set('unloading_date')} />
         </div>
         <div className="form-group">

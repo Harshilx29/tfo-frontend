@@ -26,10 +26,28 @@ const EMPTY: FormState = {
 
 function toForm(data: Record<string, unknown> | null): FormState {
   if (!data) return EMPTY;
+
+  // The actual DB column is "date and time" (with a space).
+  // Use bracket notation to read it; fall back to date_and_time (underscore)
+  // in case the column is ever renamed to the normalised form.
+  const rawDt = (data['date and time'] ?? data['date_and_time']) as string | null;
+
+  let dateStr = '';
+  let timeStr = '';
+  if (rawDt) {
+    const d = new Date(rawDt);
+    if (!isNaN(d.getTime())) {
+      const offset = d.getTimezoneOffset();
+      const local  = new Date(d.getTime() - offset * 60000);
+      dateStr = local.toISOString().slice(0, 10);  // YYYY-MM-DD
+      timeStr = local.toISOString().slice(11, 16); // HH:mm
+    }
+  }
+
   return {
-    date:        (data.date        as string) ?? '',
-    time:        (data.time        as string) ?? '',
-    cops:        String(data.cops  ?? ''),
+    date:        dateStr,
+    time:        timeStr,
+    cops:        String(data.cops        ?? ''),
     temperature: String(data.temperature ?? ''),
     boiler_time: (data.boiler_time as string) ?? '',
     location:    (data.location    as string) ?? '',

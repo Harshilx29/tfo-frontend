@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, GitBranch, Users, User, LogOut, Package, Building2, Layers, Palette
+  LayoutDashboard, GitBranch, Users, User, LogOut, Package, Building2, Layers, Palette, Cpu
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { usePermission } from '../../hooks/usePermission';
@@ -30,6 +30,10 @@ export default function Sidebar() {
   const canViewCopColour = isReadOnly
     ? false
     : (profile?.role === 'admin' || usePermission('cop.view'));
+
+  const canViewMachine = isReadOnly
+    ? false
+    : (profile?.role === 'admin' || usePermission('machine.view'));
 
   const canManageUsers = isReadOnly ? false : (profile?.role === 'admin');
 
@@ -108,6 +112,16 @@ export default function Sidebar() {
           >
             <Palette size={15} />
             <span className="nav-text">Cop Colours</span>
+          </NavLink>
+        )}
+
+        {canViewMachine && (
+          <NavLink
+            to="/machines"
+            className={({ isActive }) => `nav-link desktop-only-nav${isActive ? ' active' : ''}`}
+          >
+            <Cpu size={15} />
+            <span className="nav-text">Machines</span>
           </NavLink>
         )}
 
