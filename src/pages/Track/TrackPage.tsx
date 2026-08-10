@@ -1321,7 +1321,11 @@ export default function TrackPage() {
                             </div>
 
                             <h2 className="section-title">Machine Matrix Logs</h2>
-                            <p className="section-sub">Logs of machine matrix runs for this batch.</p>
+                            <p className="section-sub">
+                              {currentBatchData?.machine && currentBatchData.machine.length >= 10
+                                ? 'Matrix full — 10 of 10 rows added.'
+                                : `Logs of machine matrix runs for this batch (${currentBatchData?.machine?.length || 0}/10 rows added).`}
+                            </p>
 
                             <div className="card" style={{ overflowX: 'auto', marginTop: '16px' }}>
                               {(!currentBatchData?.machine || currentBatchData.machine.length === 0) ? (
@@ -1367,20 +1371,22 @@ export default function TrackPage() {
                             </div>
 
                             {/* Floating Action Button (FAB) */}
-                            <button
-                              type="button"
-                              className="fab-button"
-                              onClick={() => {
-                                setMatTime('');
-                                setMatCompany('');
-                                setMatCops('');
-                                setMatOp('');
-                                setMatrixDrawerOpen(true);
-                              }}
-                              title="Add machine entry"
-                            >
-                              <Plus size={24} />
-                            </button>
+                            {(!currentBatchData?.machine || currentBatchData.machine.length < 10) && (
+                              <button
+                                type="button"
+                                className="fab-button"
+                                onClick={() => {
+                                  setMatTime('');
+                                  setMatCompany('');
+                                  setMatCops('');
+                                  setMatOp('');
+                                  setMatrixDrawerOpen(true);
+                                }}
+                                title="Add machine entry"
+                              >
+                                <Plus size={24} />
+                              </button>
+                            )}
                           </div>
                         )}
 
