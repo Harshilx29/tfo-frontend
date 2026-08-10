@@ -48,7 +48,7 @@ function getActiveStage(data: any): string {
   }
   
   // 3. TFO Unloading check
-  if (!tfo.unloading_date || !tfo.location) {
+  if (!tfo.unloading_date) {
     return 'tfo_unload';
   }
   
@@ -521,8 +521,8 @@ export default function TrackPage() {
 
   // Submit TFO Unloading Details
   const submitTFOUnloading = async () => {
-    if (!tfoUnloadTime || !tfoLocation) {
-      addToast('Fill unloading date/time and location', 'error');
+    if (!tfoUnloadTime) {
+      addToast('Fill unloading date/time', 'error');
       throw new Error('Incomplete unloading details');
     }
     await api.put(`/track/${uid}/tfo`, {
@@ -533,7 +533,7 @@ export default function TrackPage() {
       color_s: currentBatchData?.tfo?.color_s || null,
       color_z: currentBatchData?.tfo?.color_z || null,
       unloading_date: tfoUnloadTime || null,
-      location: tfoLocation
+      location: tfoLocation.trim() || null
     });
     addToast('TFO Unloading parameters locked', 'success');
     await refreshAll();
@@ -1039,7 +1039,7 @@ export default function TrackPage() {
                                 label="Submit Unloading → send to Boiler"
                                 permissionKey="track.tfo.save"
                                 className="btn btn-primary"
-                                disabled={!tfoUnloadTime || !tfoLocation.trim()}
+                                disabled={!tfoUnloadTime}
                               />
                             </div>
                           </div>
