@@ -1263,10 +1263,9 @@ export default function TrackPage() {
                               <label>Company</label>
                               <select value={matCompany} onChange={(e) => setMatCompany(e.target.value)}>
                                 <option value="">Select company</option>
-                                <option value="Shreeji Textiles">Shreeji Textiles</option>
-                                <option value="P/P Dola Silk Mills">P/P Dola Silk Mills</option>
-                                <option value="Mahadev Fabrics">Mahadev Fabrics</option>
-                                <option value="Gopal Synthetics">Gopal Synthetics</option>
+                                <option value="Apple-1">Apple-1</option>
+                                <option value="Apple-2">Apple-2</option>
+                                <option value="Apple-3">Apple-3</option>
                               </select>
                             </div>
 
