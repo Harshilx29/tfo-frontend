@@ -10,8 +10,8 @@ interface Props {
 
 export default function MachineDrawer({ machine, onClose, onSaved }: Props) {
   return (
-    <div className="drawer-overlay" onClick={onClose}>
-      <div className="drawer-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+    <div className="drawer-overlay open" onClick={onClose}>
+      <div className="drawer-container open" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
         <div className="drawer-header" style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '16px 20px', borderBottom: '1px solid var(--border)',
