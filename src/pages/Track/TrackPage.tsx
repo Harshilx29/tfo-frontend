@@ -183,6 +183,28 @@ export default function TrackPage() {
   const [matCops, setMatCops]         = useState('');
   const [matOp, setMatOp]             = useState('');
 
+  const toggleCompany = (comp: string) => {
+    const current = matCompany ? matCompany.split(',').map(s => s.trim()) : [];
+    let updated;
+    if (current.includes(comp)) {
+      updated = current.filter(c => c !== comp);
+    } else {
+      updated = [...current, comp];
+    }
+    setMatCompany(updated.join(', '));
+  };
+
+  const toggleOperator = (opUid: string) => {
+    const current = matOp ? matOp.split(',').map(s => s.trim()) : [];
+    let updated;
+    if (current.includes(opUid)) {
+      updated = current.filter(o => o !== opUid);
+    } else {
+      updated = [...current, opUid];
+    }
+    setMatOp(updated.join(', '));
+  };
+
   // Bottom Sheet Allocations (Client-side view)
   const [sheetOpen, setSheetOpen]           = useState(false);
   const [sheetMach, setSheetMach]           = useState('');
@@ -1260,28 +1282,64 @@ export default function TrackPage() {
                             </div>
 
                             <div className="field">
-                              <label>Company</label>
-                              <select value={matCompany} onChange={(e) => setMatCompany(e.target.value)}>
-                                <option value="">Select company</option>
-                                <option value="Apple-1">Apple-1</option>
-                                <option value="Apple-2">Apple-2</option>
-                                <option value="Apple-3">Apple-3</option>
-                              </select>
+                              <label>Company (Select Multiple)</label>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                {['Apple-1', 'Apple-2', 'Apple-3'].map((comp) => {
+                                  const isSelected = (matCompany ? matCompany.split(',').map(s => s.trim()) : []).includes(comp);
+                                  return (
+                                    <button
+                                      key={comp}
+                                      type="button"
+                                      onClick={() => toggleCompany(comp)}
+                                      className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                                      style={{
+                                        borderRadius: '16px',
+                                        padding: '6px 14px',
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)'
+                                      }}
+                                    >
+                                      {comp}
+                                    </button>
+                                  );
+                                })}
+                              </div>
                             </div>
 
-                            <div className="field-row">
+                            <div className="field-row" style={{ marginTop: '16px' }}>
                               <div className="field">
                                 <label>Total Cops</label>
                                 <input type="number" placeholder="e.g. 240" value={matCops} onChange={(e) => setMatCops(e.target.value)} />
                               </div>
                               <div className="field">
-                                <label>Operator Name</label>
-                                <select value={matOp} onChange={(e) => setMatOp(e.target.value)}>
-                                  <option value="">Select operator</option>
-                                  <option value="B0CFC3D7-F0D0-44F0-B9FD-B80D2083111A">Vikki kumar</option>
-                                  <option value="BD11677D-342B-4CF3-861D-825B4FB81F26">Subhash Kumar</option>
-                                  <option value="6AE0CF3D-C748-4014-A0DC-10F0164901E2">Praphula nayak</option>
-                                </select>
+                                <label>Operator Name (Select Multiple)</label>
+                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                                  {[
+                                    { name: 'Vikki kumar', uid: 'B0CFC3D7-F0D0-44F0-B9FD-B80D2083111A' },
+                                    { name: 'Subhash Kumar', uid: 'BD11677D-342B-4CF3-861D-825B4FB81F26' },
+                                    { name: 'Praphula nayak', uid: '6AE0CF3D-C748-4014-A0DC-10F0164901E2' }
+                                  ].map((op) => {
+                                    const isSelected = (matOp ? matOp.split(',').map(s => s.trim()) : []).includes(op.uid);
+                                    return (
+                                      <button
+                                        key={op.uid}
+                                        type="button"
+                                        onClick={() => toggleOperator(op.uid)}
+                                        className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                                        style={{
+                                          borderRadius: '16px',
+                                          padding: '6px 14px',
+                                          fontSize: '13px',
+                                          fontWeight: 500,
+                                          border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)'
+                                        }}
+                                      >
+                                        {op.name}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
                               </div>
                             </div>
 
