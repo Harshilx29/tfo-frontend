@@ -677,7 +677,8 @@ tbody tr:hover { background: var(--surface-2); }
   .sidebar-header,
   .nav-section,
   .user-tile,
-  .desktop-only-nav {
+  .desktop-only-nav,
+  .sidebar .nav-link.desktop-only-nav {
     display: none !important;
   }
   
