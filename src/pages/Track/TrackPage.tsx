@@ -1276,7 +1276,12 @@ export default function TrackPage() {
                               </div>
                               <div className="field">
                                 <label>Operator Name</label>
-                                <input type="text" placeholder="Enter name" value={matOp} onChange={(e) => setMatOp(e.target.value)} />
+                                <select value={matOp} onChange={(e) => setMatOp(e.target.value)}>
+                                  <option value="">Select operator</option>
+                                  <option value="B0CFC3D7-F0D0-44F0-B9FD-B80D2083111A">Vikki kumar</option>
+                                  <option value="BD11677D-342B-4CF3-861D-825B4FB81F26">Subhash Kumar</option>
+                                  <option value="6AE0CF3D-C748-4014-A0DC-10F0164901E2">Praphula nayak</option>
+                                </select>
                               </div>
                             </div>
 
