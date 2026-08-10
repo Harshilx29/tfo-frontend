@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, QrCode, ArrowLeft } from 'lucide-react';
+import { Search, X, QrCode, ArrowLeft, Plus } from 'lucide-react';
 import { useTrackData } from '../../context/TrackDataContext';
 import { useBlocker, useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
@@ -10,6 +10,23 @@ import QrScannerModal from '../../components/QrScannerModal';
 import CompanyAutocomplete from '../../components/CompanyAutocomplete';
 import YarnAutocomplete from '../../components/YarnAutocomplete';
 import CopColourPicker from '../../components/CopColourPicker';
+
+
+const OPERATORS = [
+  { name: 'Vikki kumar', uid: 'B0CFC3D7-F0D0-44F0-B9FD-B80D2083111A' },
+  { name: 'Subhash Kumar', uid: 'BD11677D-342B-4CF3-861D-825B4FB81F26' },
+  { name: 'Praphula nayak', uid: '6AE0CF3D-C748-4014-A0DC-10F0164901E2' }
+];
+
+function getOperatorName(uid: string): string {
+  if (!uid) return '—';
+  const uids = uid.split(',').map(u => u.trim());
+  const names = uids.map(u => {
+    const op = OPERATORS.find(o => o.uid.toLowerCase() === u.toLowerCase());
+    return op ? op.name : u;
+  });
+  return names.join(', ');
+}
 
 
 function formatDate(dateStr: string) {
@@ -212,6 +229,7 @@ export default function TrackPage() {
   const [sheetSpindles, setSheetSpindles]   = useState('');
   const [sheetShift, setSheetShift]         = useState('A');
   const [matrixAllocations, setMatrixAllocations] = useState<{ machineNo: string; rpm: string; spindles: string; shift: string }[]>([]);
+  const [matrixDrawerOpen, setMatrixDrawerOpen] = useState(false);
 
   // Sync Search state when uid changes
   useEffect(() => {
@@ -594,25 +612,59 @@ export default function TrackPage() {
     await refreshAll();
   };
 
-  // Submit Machine Matrix details
+  // Submit Machine Matrix details (saving a new row)
   const submitMachineMatrix = async () => {
     if (!matTime || !matCompany || !matCops || !matOp) {
-      addToast('Fill in all run parameters first', 'error');
-      throw new Error('Incomplete matrix details');
+      addToast('Fill in all parameters before saving', 'error');
+      return;
     }
-    await api.put(`/track/${uid}/machine`, {
-      rows: [
-        {
-          sr_no: 1,
-          date_and_time: matTime || null,
-          company: matCompany,
-          cops: parseInt(matCops, 10),
-          name: matOp
-        }
-      ]
-    });
-    addToast('Batch complete', 'success');
-    await refreshAll();
+    
+    try {
+      const newRow = {
+        date_and_time: new Date(matTime).toISOString(),
+        company: matCompany,
+        cops: parseInt(matCops, 10),
+        name: matOp
+      };
+
+      // Append new row to existing machine rows
+      const existingRows = currentBatchData?.machine || [];
+      const updatedRows = [...existingRows.map((r: any) => ({
+        sr_no: r.sr_no,
+        date_and_time: r.date_and_time,
+        company: r.company,
+        cops: r.cops,
+        name: r.name
+      })), newRow];
+
+      await api.put(`/track/${uid}/machine`, {
+        rows: updatedRows
+      });
+
+      addToast('Machine matrix entry saved', 'success');
+      setMatrixDrawerOpen(false);
+      
+      // Clear drawer inputs
+      setMatTime('');
+      setMatCompany('');
+      setMatCops('');
+      setMatOp('');
+      
+      await refreshAll();
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : 'Failed to save matrix entry', 'error');
+    }
+  };
+
+  const deleteMachineRow = async (rowId: number) => {
+    if (!window.confirm('Are you sure you want to delete this row?')) return;
+    try {
+      await api.delete(`/track/${uid}/machine/${rowId}`);
+      addToast('Row deleted successfully', 'success');
+      await refreshAll();
+    } catch (err: unknown) {
+      addToast(err instanceof Error ? err.message : 'Failed to delete row', 'error');
+    }
   };
 
   function getStageProgressIndex(s: string): number {
@@ -1255,13 +1307,10 @@ export default function TrackPage() {
 
                         {/* ── STAGE 4b/5: MACHINE MATRIX ── */}
                         {stage === 'machine' && (
-                          <div>
-                            <div className="locked-card">
+                          <div style={{ position: 'relative', minHeight: '300px' }}>
+                            <div className="locked-card" style={{ marginBottom: '20px' }}>
                               <div className="lh">
-                                <b>Batch Chain · Locked</b>
-                                <svg className="lock-icon" viewBox="0 0 24 24" fill="none" stroke="#5c8f6c" strokeWidth="2">
-                                  <rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V7a4 4 0 0 1 8 0v4" />
-                                </svg>
+                                <b>Batch Chain · Active</b>
                               </div>
                               <div className="locked-grid">
                                 <div className="locked-field"><span>Lot</span><b>{winLot}</b></div>
@@ -1271,124 +1320,67 @@ export default function TrackPage() {
                               </div>
                             </div>
 
-                            <h2 className="section-title">Machine Matrix Details</h2>
-                            <p className="section-sub">Specify the overall run settings and load requirements.</p>
+                            <h2 className="section-title">Machine Matrix Logs</h2>
+                            <p className="section-sub">Logs of machine matrix runs for this batch.</p>
 
-                            <div className="field">
-                              <label>Date & Time</label>
-                              <div className="date-field-wrapper">
-                                <input type="datetime-local" value={matTime} onChange={(e) => setMatTime(e.target.value)} />
-                              </div>
-                            </div>
-
-                            <div className="field">
-                              <label>Company (Select Multiple)</label>
-                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                                {['Apple-1', 'Apple-2', 'Apple-3'].map((comp) => {
-                                  const isSelected = (matCompany ? matCompany.split(',').map(s => s.trim()) : []).includes(comp);
-                                  return (
-                                    <button
-                                      key={comp}
-                                      type="button"
-                                      onClick={() => toggleCompany(comp)}
-                                      className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
-                                      style={{
-                                        borderRadius: '16px',
-                                        padding: '6px 14px',
-                                        fontSize: '13px',
-                                        fontWeight: 500,
-                                        border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)'
-                                      }}
-                                    >
-                                      {comp}
-                                    </button>
-                                  );
-                                })}
-                              </div>
-                            </div>
-
-                            <div className="field-row" style={{ marginTop: '16px' }}>
-                              <div className="field">
-                                <label>Total Cops</label>
-                                <input type="number" placeholder="e.g. 240" value={matCops} onChange={(e) => setMatCops(e.target.value)} />
-                              </div>
-                              <div className="field">
-                                <label>Operator Name (Select Multiple)</label>
-                                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
-                                  {[
-                                    { name: 'Vikki kumar', uid: 'B0CFC3D7-F0D0-44F0-B9FD-B80D2083111A' },
-                                    { name: 'Subhash Kumar', uid: 'BD11677D-342B-4CF3-861D-825B4FB81F26' },
-                                    { name: 'Praphula nayak', uid: '6AE0CF3D-C748-4014-A0DC-10F0164901E2' }
-                                  ].map((op) => {
-                                    const isSelected = (matOp ? matOp.split(',').map(s => s.trim()) : []).includes(op.uid);
-                                    return (
-                                      <button
-                                        key={op.uid}
-                                        type="button"
-                                        onClick={() => toggleOperator(op.uid)}
-                                        className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
-                                        style={{
-                                          borderRadius: '16px',
-                                          padding: '6px 14px',
-                                          fontSize: '13px',
-                                          fontWeight: 500,
-                                          border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)'
-                                        }}
-                                      >
-                                        {op.name}
-                                      </button>
-                                    );
-                                  })}
+                            <div className="card" style={{ overflowX: 'auto', marginTop: '16px' }}>
+                              {(!currentBatchData?.machine || currentBatchData.machine.length === 0) ? (
+                                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                                  No matrix records found. Click the + button to add the first one.
                                 </div>
-                              </div>
-                            </div>
-
-                            <div className="divider" />
-
-                            <h2 className="section-title">Machine Allocations</h2>
-                            <p className="section-sub">Insert individual matrix rows — up to 10 per batch.</p>
-
-                            <div id="matrixRows">
-                              {matrixAllocations.length === 0 ? (
-                                <div className="matrix-empty">No machine rows yet. Add the first one below.</div>
                               ) : (
-                                matrixAllocations.map((r, i) => (
-                                  <div className="matrix-row" key={i}>
-                                    <div className="matrix-idx">{i + 1}</div>
-                                    <div className="matrix-info">
-                                      <b>Machine {r.machineNo}</b> · {r.rpm} RPM
-                                      <span>Spindles: {r.spindles} · Shift: {r.shift}</span>
-                                    </div>
-                                    <div
-                                      className="matrix-del"
-                                      onClick={() => {
-                                        setMatrixAllocations((prev) => prev.filter((_, idx) => idx !== i));
-                                      }}
-                                    >
-                                      ×
-                                    </div>
-                                  </div>
-                                ))
+                                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                  <thead>
+                                    <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
+                                      <th style={{ padding: '12px 16px' }}>Date & Time</th>
+                                      <th style={{ padding: '12px 16px' }}>Company</th>
+                                      <th style={{ padding: '12px 16px' }}>Total Cops</th>
+                                      <th style={{ padding: '12px 16px' }}>Operator</th>
+                                      <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {currentBatchData.machine.map((r: any) => (
+                                      <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>
+                                          {r.date_and_time ? new Date(r.date_and_time).toLocaleString() : '—'}
+                                        </td>
+                                        <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '13px' }}>{r.company || '—'}</td>
+                                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>{r.cops ?? '—'}</td>
+                                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>{getOperatorName(r.name || '')}</td>
+                                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                          <button
+                                            type="button"
+                                            className="btn btn-ghost btn-icon btn-sm"
+                                            onClick={() => deleteMachineRow(r.id)}
+                                            style={{ color: 'var(--danger)' }}
+                                            title="Delete entry"
+                                          >
+                                            <X size={15} />
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               )}
                             </div>
 
-                            {matrixAllocations.length < 10 ? (
-                              <button className="add-row-btn" onClick={() => setSheetOpen(true)}>
-                                + Add Machine Row ({matrixAllocations.length}/10)
-                              </button>
-                            ) : (
-                              <p className="section-sub" style={{ textAlign: 'center' }}>Matrix full — 10 of 10 rows added.</p>
-                            )}
-
-                            <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center', width: '100%' }}>
-                              <SaveButton
-                                onSave={submitMachineMatrix}
-                                label="Complete batch"
-                                permissionKey="track.machine.save"
-                                className="btn btn-primary"
-                                disabled={!matTime || !matCompany || !matCops || !matOp.trim()}
-                              />
-                            </div>
+                            {/* Floating Action Button (FAB) */}
+                            <button
+                              type="button"
+                              className="fab-button"
+                              onClick={() => {
+                                setMatTime('');
+                                setMatCompany('');
+                                setMatCops('');
+                                setMatOp('');
+                                setMatrixDrawerOpen(true);
+                              }}
+                              title="Add machine entry"
+                            >
+                              <Plus size={24} />
+                            </button>
                           </div>
                         )}
 
@@ -1522,6 +1514,98 @@ export default function TrackPage() {
           setActiveScanField(null);
         }}
       />
+      {matrixDrawerOpen && (
+        <div className="drawer-overlay" onClick={() => setMatrixDrawerOpen(false)}>
+          <div className="drawer-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <div className="drawer-header" style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '16px 20px', borderBottom: '1px solid var(--border)',
+            }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, margin: 0 }}>Add Machine Matrix Entry</h2>
+              <button className="btn btn-ghost btn-icon btn-sm" onClick={() => setMatrixDrawerOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="drawer-body" style={{ padding: '20px' }}>
+              <div className="field" style={{ marginBottom: '16px' }}>
+                <label>Date & Time</label>
+                <input type="datetime-local" className="form-input" value={matTime} onChange={(e) => setMatTime(e.target.value)} />
+              </div>
+
+              <div className="field" style={{ marginBottom: '16px' }}>
+                <label>Company (Select Multiple)</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  {['Apple-1', 'Apple-2', 'Apple-3'].map((comp) => {
+                    const isSelected = (matCompany ? matCompany.split(',').map(s => s.trim()) : []).includes(comp);
+                    return (
+                      <button
+                        key={comp}
+                        type="button"
+                        onClick={() => toggleCompany(comp)}
+                        className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{
+                          borderRadius: '16px',
+                          padding: '6px 14px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)'
+                        }}
+                      >
+                        {comp}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="field" style={{ marginBottom: '16px' }}>
+                <label>Total Cops</label>
+                <input type="number" className="form-input" placeholder="e.g. 240" value={matCops} onChange={(e) => setMatCops(e.target.value)} />
+              </div>
+
+              <div className="field" style={{ marginBottom: '24px' }}>
+                <label>Operator Name (Select Multiple)</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                  {[
+                    { name: 'Vikki kumar', uid: 'B0CFC3D7-F0D0-44F0-B9FD-B80D2083111A' },
+                    { name: 'Subhash Kumar', uid: 'BD11677D-342B-4CF3-861D-825B4FB81F26' },
+                    { name: 'Praphula nayak', uid: '6AE0CF3D-C748-4014-A0DC-10F0164901E2' }
+                  ].map((op) => {
+                    const isSelected = (matOp ? matOp.split(',').map(s => s.trim()) : []).includes(op.uid);
+                    return (
+                      <button
+                        key={op.uid}
+                        type="button"
+                        onClick={() => toggleOperator(op.uid)}
+                        className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                        style={{
+                          borderRadius: '16px',
+                          padding: '6px 14px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)'
+                        }}
+                      >
+                        {op.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="form-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setMatrixDrawerOpen(false)}>
+                  Cancel
+                </button>
+                <button type="button" className="btn btn-primary" onClick={submitMachineMatrix} disabled={!matTime || !matCompany || !matCops || !matOp}>
+                  Save Matrix
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

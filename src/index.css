@@ -2308,5 +2308,39 @@ tbody tr:hover { background: var(--surface-2); }
   }
 }
 
+/* Floating Action Button (FAB) */
+.fab-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 999;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s;
+}
+.fab-button:hover {
+  background: #e4e4e7;
+  transform: scale(1.06);
+}
+.fab-button:active {
+  transform: scale(0.95);
+}
+
+@media (max-width: 768px) {
+  .fab-button {
+    bottom: 84px; /* offset bottom nav bar on mobile */
+    right: 16px;
+  }
+}
+
 
 
