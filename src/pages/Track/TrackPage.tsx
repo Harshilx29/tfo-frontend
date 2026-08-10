@@ -54,7 +54,7 @@ function getActiveStage(data: any): string {
   
   // 4. Boiler check
   const boiler = data.boiler;
-  if (!boiler || !boiler.date_and_time || !boiler.cops || !boiler.temperature || !boiler.boiler_time || !boiler.location || !boiler.name) {
+  if (!boiler || !boiler.date_and_time || !boiler.cops || !boiler.temperature || !boiler.boiler_time || !boiler.name) {
     return '3';
   }
   
