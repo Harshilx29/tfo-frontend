@@ -690,7 +690,15 @@ export default function TrackPage() {
     return '';
   };
 
-  const filteredBatches = openBatches.filter(b => b.uid.toLowerCase().includes(search.toLowerCase()));
+  const parseBatchSeries = (uid: string): number => {
+    const parts = uid.split('-');
+    const series = parseInt(parts[parts.length - 1], 10);
+    return isNaN(series) ? 0 : series;
+  };
+
+  const filteredBatches = openBatches
+    .filter(b => b.uid.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => parseBatchSeries(a.uid) - parseBatchSeries(b.uid));
 
   return (
     <>
