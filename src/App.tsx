@@ -27,6 +27,7 @@ import CopColourDirectory from './pages/CopColour/CopColourDirectory';
 import CopColourFormPage from './pages/CopColour/CopColourFormPage';
 import MachineDirectory from './pages/Machine/MachineDirectory';
 import { MachineDataProvider } from './context/MachineDataContext';
+import BatchLogPage from './pages/BatchLog/BatchLogPage';
 
 const router = createBrowserRouter([
   {
@@ -120,6 +121,10 @@ const router = createBrowserRouter([
       {
         path: 'machines',
         element: <MachineDirectory />,
+      },
+      {
+        path: 'batch-log',
+        element: <BatchLogPage />,
       },
     ],
   },

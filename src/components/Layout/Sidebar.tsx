@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, GitBranch, Users, User, LogOut, Package, Building2, Layers, Palette, Cpu
+  LayoutDashboard, GitBranch, Users, User, LogOut, Package, Building2, Layers, Palette, Cpu, ClipboardList
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { usePermission } from '../../hooks/usePermission';
@@ -34,6 +34,10 @@ export default function Sidebar() {
   const canViewMachine = isReadOnly
     ? false
     : (profile?.role === 'admin' || usePermission('machine.view'));
+
+  const canViewBatchLog = isReadOnly
+    ? false
+    : (profile?.role === 'admin' || usePermission('batchlog.view'));
 
   const canManageUsers = isReadOnly ? false : (profile?.role === 'admin');
 
@@ -122,6 +126,16 @@ export default function Sidebar() {
           >
             <Cpu size={15} />
             <span className="nav-text">Machines</span>
+          </NavLink>
+        )}
+
+        {canViewBatchLog && (
+          <NavLink
+            to="/batch-log"
+            className={({ isActive }) => `nav-link mobile-only-nav${isActive ? ' active' : ''}`}
+          >
+            <ClipboardList size={15} />
+            <span className="nav-text">Batch Log</span>
           </NavLink>
         )}
 

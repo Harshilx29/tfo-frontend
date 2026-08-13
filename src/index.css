@@ -681,6 +681,10 @@ tbody tr:hover { background: var(--surface-2); }
   .sidebar .nav-link.desktop-only-nav {
     display: none !important;
   }
+
+  .sidebar .nav-link.mobile-only-nav {
+    display: flex !important;
+  }
   
   .sidebar .sidebar-nav,
   .sidebar .sidebar-footer {
@@ -2389,6 +2393,11 @@ tbody tr:hover { background: var(--surface-2); }
   overflow-y: auto;
   display: flex;
   flex-direction: column;
+}
+
+/* Mobile-only nav item hiding on desktop */
+.mobile-only-nav {
+  display: none !important;
 }
 
 
