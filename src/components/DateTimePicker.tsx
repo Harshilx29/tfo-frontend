@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -76,7 +76,16 @@ export default function DateTimePicker({ value, onChange, label = "From", startD
   const emit = useCallback((date: Date | null, h: number, m: number, ap: "AM" | "PM") => {
     if (!date) return;
     const h24 = toH24(h, ap);
-    onChange(`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(h24)}:${pad(m)}`);
+    // Include the browser's local UTC offset so Postgres stores the correct
+    // local instant (e.g. "2026-08-03T22:20+05:30") instead of treating the
+    // naive string as UTC and shifting it on read-back.
+    const offsetMins = -new Date().getTimezoneOffset(); // e.g. +330 for IST
+    const sign = offsetMins >= 0 ? '+' : '-';
+    const absOff = Math.abs(offsetMins);
+    const offH = pad(Math.floor(absOff / 60));
+    const offM = pad(absOff % 60);
+    const tzSuffix = `${sign}${offH}:${offM}`;
+    onChange(`${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}T${pad(h24)}:${pad(m)}:00${tzSuffix}`);
   }, [onChange]);
 
   const genDays = (): DayObj[] => {

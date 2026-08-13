@@ -43,9 +43,14 @@ function formatDateTimeLocal(dateStr: string) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '';
-  const offset = d.getTimezoneOffset();
-  const localDate = new Date(d.getTime() - offset * 60000);
-  return localDate.toISOString().slice(0, 16);
+  // Use local-time getters — JS already converts the UTC instant to the
+  // browser's local timezone, so no manual offset arithmetic is needed.
+  const yyyy = d.getFullYear();
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const dd   = String(d.getDate()).padStart(2, '0');
+  const hh   = String(d.getHours()).padStart(2, '0');
+  const min  = String(d.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 }
 
 // Helper to scan batch data and jump to furthest incomplete stage
