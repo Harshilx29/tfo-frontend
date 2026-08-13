@@ -2400,5 +2400,455 @@ tbody tr:hover { background: var(--surface-2); }
   display: none !important;
 }
 
+/* ================================================================
+   TFO Status Page  (.tfo-status-* / .tfo-*)
+   Dark monitor-style layout using design system tokens.
+   ================================================================ */
+
+/* ── Root ── */
+.tfo-status-root {
+  min-height: 100vh;
+  background: #060608;
+  color: var(--text-muted);
+  font-family: var(--font, 'Inter', sans-serif);
+}
+
+/* ── Sticky Header ── */
+.tfo-status-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: #060608;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+}
+.tfo-status-header.scrolled {
+  background: rgba(6, 6, 8, 0.92);
+  border-color: #16161a;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+}
+.tfo-status-header-inner {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 12px 20px 8px;
+}
+
+/* Top row */
+.tfo-status-toprow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 38px;
+}
+.tfo-status-title-wrap {
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.tfo-status-title {
+  font-size: 17px;
+  font-weight: 500;
+  color: #f4f4f5;
+  letter-spacing: -0.3px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* Mini stats (appear on scroll) */
+.tfo-status-mini-stats {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: 16px;
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+}
+.tfo-status-mini-stats.visible {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+.w-divider {
+  width: 1px;
+  height: 12px;
+  background: #202024;
+}
+.tfo-mini-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.tfo-mini-dot.running {
+  background: #30d158;
+  box-shadow: 0 0 6px rgba(48,209,88,0.6);
+}
+.tfo-mini-dot.idle { background: #3f3f46; }
+.tfo-mini-count {
+  font-size: 11px;
+  font-weight: 500;
+}
+.tfo-mini-count.running { color: #30d158; }
+.tfo-mini-count.idle    { color: #52525b; }
+
+/* Filter buttons */
+.tfo-status-filters {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.tfo-filter-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 300;
+  color: #52525b;
+  padding: 4px 2px;
+  letter-spacing: 0.03em;
+  transition: color 0.25s;
+}
+.tfo-filter-btn:hover { color: #a1a1aa; }
+.tfo-filter-btn.active {
+  color: #f4f4f5;
+  font-weight: 500;
+  text-shadow: 0 0 12px rgba(255,255,255,0.5);
+}
+
+/* ── Collapsible big-stats ── */
+.tfo-status-bigstats-wrap {
+  display: grid;
+  transition: grid-template-rows 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+}
+.tfo-status-bigstats-overflow {
+  overflow: hidden;
+}
+.tfo-status-bigstats {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+  padding: 24px 0 12px;
+}
+.tfo-bigstat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tfo-bigstat-label {
+  display: flex;
+  align-items: center;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #3f3f46;
+}
+.tfo-bigstat-value {
+  font-size: 42px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: #f4f4f5;
+}
+.tfo-bigstat-value.running { color: #30d158; }
+.tfo-bigstat-value.idle    { color: #52525b; }
+.tfo-bigstat-divider {
+  width: 1px;
+  height: 40px;
+  background: #16161a;
+  flex-shrink: 0;
+}
+
+/* ── Progress bar ── */
+.tfo-progress-track {
+  width: 100%;
+  height: 2px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 99px;
+  overflow: hidden;
+  margin-top: 10px;
+}
+.tfo-progress-bar {
+  height: 100%;
+  background: rgba(48,209,88,0.75);
+  border-radius: 99px;
+  transition: width 1s ease;
+}
+
+/* ── Machine Grid ── */
+.tfo-status-grid {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 16px 20px 80px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+@media (min-width: 420px)  { .tfo-status-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 560px)  { .tfo-status-grid { grid-template-columns: repeat(5, 1fr); } }
+@media (min-width: 720px)  { .tfo-status-grid { grid-template-columns: repeat(6, 1fr); gap: 10px; } }
+@media (min-width: 1024px) { .tfo-status-grid { grid-template-columns: repeat(8, 1fr); } }
+@media (min-width: 1280px) { .tfo-status-grid { grid-template-columns: repeat(10, 1fr); } }
+
+/* ── Machine Card ── */
+.tfo-machine-card {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 10px 11px;
+  border-radius: 8px;
+  border: 1px solid #111115;
+  background: #0b0b0e;
+  cursor: pointer;
+  transition: border-color 0.25s, background 0.25s, opacity 0.25s;
+}
+.tfo-machine-card.running { border-color: #1a1a1f; }
+.tfo-machine-card.idle    { opacity: 0.55; }
+.tfo-machine-card:hover {
+  border-color: #2a2a30;
+  background: #111116;
+  opacity: 1 !important;
+}
+
+/* Card top */
+.tfo-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+.tfo-card-num {
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.5px;
+}
+.tfo-card-num.running { color: #f4f4f5; }
+.tfo-card-num.idle    { color: #52525b; }
+.tfo-card-sub {
+  font-size: 9px;
+  color: #3f3f46;
+  font-family: monospace;
+  letter-spacing: 0.06em;
+  margin-top: 5px;
+}
+.tfo-status-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.tfo-status-dot.running {
+  background: #30d158;
+  box-shadow: 0 0 7px rgba(48,209,88,0.75);
+}
+.tfo-status-dot.idle { background: #2a2a30; }
+
+/* Card bottom */
+.tfo-card-bottom {
+  margin-top: auto;
+  border-top: 1px solid #111115;
+  padding-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tfo-card-vendor {
+  font-size: 10px;
+  font-weight: 500;
+  color: #a1a1aa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tfo-card-vendor.muted { color: #3f3f46; }
+.tfo-card-meta {
+  display: flex;
+  justify-content: flex-end;
+}
+.tfo-card-status-label {
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.tfo-card-status-label.running { color: #30d158; }
+.tfo-card-status-label.idle    { color: #3f3f46; }
+
+/* Empty state */
+.tfo-status-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: #3f3f46;
+  font-size: 13px;
+  font-weight: 300;
+}
+
+/* ── Drawer Overlay ── */
+.tfo-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+.tfo-drawer-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ── Bottom Drawer ── */
+.tfo-drawer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 70;
+  background: #0c0c10;
+  border-top: 1px solid #1c1c22;
+  border-radius: 20px 20px 0 0;
+  transform: translateY(100%);
+  transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.tfo-drawer.open { transform: translateY(0); }
+.tfo-drawer-inner {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 24px 40px;
+}
+
+/* Drawer header */
+.tfo-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+}
+.tfo-drawer-sub {
+  display: flex;
+  align-items: center;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #52525b;
+  margin: 0 0 6px 0;
+}
+.tfo-drawer-title {
+  font-size: 36px;
+  font-weight: 300;
+  color: #f4f4f5;
+  letter-spacing: -1px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  line-height: 1;
+}
+.tfo-drawer-title-meta {
+  font-size: 13px;
+  font-weight: 400;
+  color: #52525b;
+  font-family: monospace;
+  letter-spacing: 0;
+}
+.tfo-drawer-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #1c1c22;
+  background: #141418;
+  color: #71717a;
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+.tfo-drawer-close:hover {
+  background: #1e1e24;
+  color: #f4f4f5;
+}
+
+/* Info strip */
+.tfo-drawer-info-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  background: #16161a;
+  border: 1px solid #16161a;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+.tfo-drawer-info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #0e0e12;
+}
+.tfo-drawer-info-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #3f3f46;
+}
+.tfo-drawer-info-val {
+  font-size: 14px;
+  font-weight: 500;
+  color: #a1a1aa;
+}
+.tfo-drawer-info-val.running { color: #30d158; }
+.tfo-drawer-info-val.idle    { color: #52525b; }
+
+/* Action buttons */
+.tfo-drawer-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 480px) { .tfo-drawer-actions { grid-template-columns: 1fr; } }
+.tfo-drawer-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 16px;
+  border-radius: 12px;
+  border: 1px solid #1c1c22;
+  background: #111116;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.tfo-drawer-action-btn:hover {
+  background: #161620;
+  border-color: #2a2a34;
+}
+.tfo-drawer-action-icon {
+  transition: transform 0.25s, color 0.25s;
+}
+.tfo-drawer-action-btn:hover .tfo-drawer-action-icon { transform: scale(1.12); }
+.tfo-drawer-action-icon.primary { color: rgba(48,209,88,0.75); }
+.tfo-drawer-action-icon.muted   { color: #3f3f46; }
+.tfo-drawer-action-btn:hover .tfo-drawer-action-icon.primary { color: #30d158; }
+.tfo-drawer-action-btn:hover .tfo-drawer-action-icon.muted   { color: #71717a; }
+.tfo-drawer-action-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #71717a;
+  transition: color 0.2s;
+}
+.tfo-drawer-action-btn:hover .tfo-drawer-action-label { color: #f4f4f5; }
+
+
 
 

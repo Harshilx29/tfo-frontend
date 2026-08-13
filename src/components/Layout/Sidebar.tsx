@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, GitBranch, Users, User, LogOut, Package, Building2, Layers, Palette, Cpu, ClipboardList
+  LayoutDashboard, GitBranch, Users, User, LogOut, Package, Building2, Layers, Palette, Cpu, ClipboardList, Activity
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { usePermission } from '../../hooks/usePermission';
@@ -86,6 +86,16 @@ export default function Sidebar() {
           >
             <GitBranch size={15} />
             <span className="nav-text">Track</span>
+          </NavLink>
+        )}
+
+        {canViewTrack && (
+          <NavLink
+            to="/tfo-status"
+            className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
+          >
+            <Activity size={15} />
+            <span className="nav-text">TFO Status</span>
           </NavLink>
         )}
 

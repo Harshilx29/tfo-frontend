@@ -28,6 +28,7 @@ import CopColourFormPage from './pages/CopColour/CopColourFormPage';
 import MachineDirectory from './pages/Machine/MachineDirectory';
 import { MachineDataProvider } from './context/MachineDataContext';
 import BatchLogPage from './pages/BatchLog/BatchLogPage';
+import TFOStatusPage from './pages/TFOStatus/TFOStatusPage';
 
 const router = createBrowserRouter([
   {
@@ -125,6 +126,10 @@ const router = createBrowserRouter([
       {
         path: 'batch-log',
         element: <BatchLogPage />,
+      },
+      {
+        path: 'tfo-status',
+        element: <TFOStatusPage />,
       },
     ],
   },
