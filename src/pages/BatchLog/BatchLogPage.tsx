@@ -1,10 +1,17 @@
-import { useState, useEffect } from 'react';
-import { QrCode, Plus, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { QrCode } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../context/ToastContext';
 import QrScannerModal from '../../components/QrScannerModal';
 
+interface PendingItem {
+  id: number | string;
+  uid: string;
+  created_at: string;
+}
+
 interface StagedRow {
+  id?: number | string;
   uid: string;
   num: number;
 }
@@ -21,11 +28,15 @@ export default function BatchLogPage() {
   const [fileNumber, setFileNumber] = useState<number>(() => {
     try {
       const saved = localStorage.getItem('current-file-number');
-      return saved ? JSON.parse(saved) : 1;
+      return saved ? Math.max(1, JSON.parse(saved)) : 1;
     } catch {
       return 1;
     }
   });
+
+  const [pendingPool, setPendingPool] = useState<PendingItem[]>([]);
+  const [loadingPending, setLoadingPending] = useState(false);
+  const [baseNextPaperNum, setBaseNextPaperNum] = useState(1);
 
   const [staging, setStaging] = useState<StagedRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
@@ -35,8 +46,34 @@ export default function BatchLogPage() {
   const [saving, setSaving] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
 
-  // Load recent history from API on mount
+  // 1. Fetch pending pool (up to ~80 rows where file_number IS NULL)
+  const fetchPendingPool = useCallback(async () => {
+    setLoadingPending(true);
+    try {
+      const data = await api.get<PendingItem[]>('/batch-log/pending');
+      setPendingPool(data ?? []);
+    } catch (e: unknown) {
+      addToast(e instanceof Error ? e.message : 'Failed to load pending pool', 'error');
+    } finally {
+      setLoadingPending(false);
+    }
+  }, [api, addToast]);
+
+  // 2. Fetch true next paper number for current fileNumber from DB
+  const fetchNextPaperNumber = useCallback(async (fNum: number) => {
+    try {
+      const res = await api.get<{ fileId: number; nextPaperNumber: number }>(
+        `/batch-log/next-paper-number?fileId=${fNum}`
+      );
+      setBaseNextPaperNum(res.nextPaperNumber || 1);
+    } catch {
+      setBaseNextPaperNum(1);
+    }
+  }, [api]);
+
+  // Load pending pool & recent history on mount
   useEffect(() => {
+    void fetchPendingPool();
     api.get<any[]>('/batch-log/recent')
       .then((data) => {
         if (data && Array.isArray(data)) {
@@ -48,48 +85,60 @@ export default function BatchLogPage() {
         }
       })
       .catch(() => {});
-  }, [api]);
+  }, [fetchPendingPool, api]);
 
-  // Persist file number locally
+  // When fileNumber changes, re-fetch true next paper number from DB
   useEffect(() => {
+    void fetchNextPaperNumber(fileNumber);
     try {
       localStorage.setItem('current-file-number', JSON.stringify(fileNumber));
     } catch {}
-  }, [fileNumber]);
+  }, [fileNumber, fetchNextPaperNumber]);
 
-  const nextPaperNumber = (currentStaging: StagedRow[]) => {
-    return currentStaging.length ? currentStaging[currentStaging.length - 1].num + 1 : 1;
-  };
+  // Derive next paper number for staging (baseNextPaperNum + current staging count)
+  const currentNextPaperNum = baseNextPaperNum + staging.length;
 
+  // Add scanned paper UID to staging after validating against pending pool
   const addStagedRow = (scannedUid: string) => {
     const cleanUid = scannedUid.trim();
     if (!cleanUid) return;
 
-    setStaging((prev) => {
-      if (prev.some((r) => r.uid === cleanUid)) {
-        addToast('Already scanned in this file', 'error');
-        return prev;
-      }
-      const nextNum = nextPaperNumber(prev);
-      const updated = [...prev, { uid: cleanUid, num: nextNum }];
-      addToast(`Added ${fileNumber}-${nextNum}`, 'success');
-      return updated;
-    });
+    // Check if in staging already
+    if (staging.some((r) => r.uid.toLowerCase() === cleanUid.toLowerCase())) {
+      addToast(`UID "${cleanUid}" is already in staging`, 'error');
+      return;
+    }
+
+    // Match scanned UID against pending pool (instant local check)
+    const match = pendingPool.find((p) => p.uid.toLowerCase() === cleanUid.toLowerCase());
+    if (!match) {
+      addToast(`Error: Paper "${cleanUid}" is not in the pending pool (unknown or already assigned)`, 'error');
+      return;
+    }
+
+    const assignedNum = currentNextPaperNum;
+    setStaging((prev) => [
+      ...prev,
+      { id: match.id, uid: match.uid, num: baseNextPaperNum + prev.length },
+    ]);
+    addToast(`Staged ${match.uid} as ${fileNumber}-${assignedNum}`, 'success');
   };
 
   const removeStagedRow = (idx: number) => {
     setStaging((prev) => {
       const nextArr = [...prev];
       nextArr.splice(idx, 1);
-      return nextArr.map((r, i) => ({ ...r, num: i + 1 }));
+      // Re-sequence numbers so papers remain contiguous
+      return nextArr.map((r, i) => ({ ...r, num: baseNextPaperNum + i }));
     });
   };
 
-  const changeFile = (delta: number) => {
-    if (staging.length && !window.confirm(`You have unconfirmed scans for File ${fileNumber}. Switching files will discard them. Continue?`)) {
+  // Increment-only file number control (no decrement button)
+  const incrementFileNumber = () => {
+    if (staging.length && !window.confirm(`You have unconfirmed scans for File ${fileNumber}. Switching files will discard staged scans. Continue?`)) {
       return;
     }
-    setFileNumber((prev) => Math.max(1, prev + delta));
+    setFileNumber((prev) => prev + 1);
     setStaging([]);
   };
 
@@ -100,6 +149,7 @@ export default function BatchLogPage() {
     }
   };
 
+  // Confirm & Save with conditional update check
   const handleConfirmSave = async () => {
     if (!staging.length || saving) return;
     setSaving(true);
@@ -112,16 +162,40 @@ export default function BatchLogPage() {
         })),
       };
 
-      await api.post('/batch-log/confirm', payload);
-      addToast(`Saved ${staging.length} paper(s) to File ${fileNumber}`, 'success');
+      const res = await api.post<any>('/batch-log/confirm', payload);
 
-      const newHistoryItems: HistoryRow[] = staging.map((r) => ({
-        record: `${fileNumber}-${r.num}`,
-        uid: r.uid,
-      }));
+      if (res && res.results) {
+        const failed = res.results.filter((r: any) => !r.ok);
+        const succeeded = res.results.filter((r: any) => r.ok);
 
-      setHistory((prev) => [...newHistoryItems, ...prev]);
-      setStaging([]);
+        if (failed.length > 0) {
+          // Surface specific conflicts
+          const conflictUids = failed.map((f: any) => `${f.uid} (${f.error})`).join(', ');
+          addToast(`Conflict detected: ${conflictUids}`, 'error');
+
+          // Keep failed rows in staging so user can redo or remove
+          const failedUidSet = new Set(failed.map((f: any) => f.uid.toLowerCase()));
+          setStaging((prev) => prev.filter((r) => failedUidSet.has(r.uid.toLowerCase())));
+        } else {
+          addToast(`Successfully confirmed ${succeeded.length} paper(s) to File ${fileNumber}`, 'success');
+          setStaging([]);
+        }
+
+        if (succeeded.length > 0) {
+          const newHistory: HistoryRow[] = succeeded.map((s: any) => ({
+            record: s.file_number,
+            uid: s.uid,
+          }));
+          setHistory((prev) => [...newHistory, ...prev]);
+        }
+      } else {
+        addToast(`Saved ${staging.length} paper(s) to File ${fileNumber}`, 'success');
+        setStaging([]);
+      }
+
+      // Always refresh pending pool & next paper number after confirm attempt
+      void fetchPendingPool();
+      void fetchNextPaperNumber(fileNumber);
     } catch (e: unknown) {
       addToast(e instanceof Error ? e.message : 'Failed to save batch log', 'error');
     } finally {
@@ -165,17 +239,17 @@ export default function BatchLogPage() {
           style={{
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: 12,
-            color: '#f2f2f2',
+            color: '#ececec',
             border: '1px solid #333333',
             borderRadius: 20,
             padding: '3px 10px',
           }}
         >
-          Staging
+          Pool: {loadingPending ? '…' : pendingPool.length}
         </span>
       </header>
 
-      {/* File Number Card */}
+      {/* File Number Card (Increment-only) */}
       <div
         style={{
           background: '#1a1a1a',
@@ -203,7 +277,7 @@ export default function BatchLogPage() {
               fontFamily: "'IBM Plex Mono', monospace",
               fontSize: 34,
               fontWeight: 600,
-              color: '#f2f2f2',
+              color: '#ececec',
               lineHeight: 1,
               flex: 1,
             }}
@@ -213,7 +287,7 @@ export default function BatchLogPage() {
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               type="button"
-              onClick={() => changeFile(1)}
+              onClick={incrementFileNumber}
               style={{
                 background: '#232323',
                 border: '1px solid #333333',
@@ -229,6 +303,7 @@ export default function BatchLogPage() {
                 fontWeight: 600,
               }}
               aria-label="Increase file number"
+              title="Increment File Number"
             >
               +
             </button>
@@ -254,8 +329,8 @@ export default function BatchLogPage() {
             padding: 16,
             borderRadius: 12,
             border: 'none',
-            background: '#f2f2f2',
-            color: '#111',
+            background: '#ececec',
+            color: '#111111',
             fontSize: 16,
             fontWeight: 700,
             letterSpacing: '0.02em',
@@ -310,7 +385,7 @@ export default function BatchLogPage() {
               style={{
                 background: '#232323',
                 border: '1px solid #333333',
-                color: '#f2f2f2',
+                color: '#ececec',
                 borderRadius: 10,
                 padding: '0 16px',
                 fontWeight: 600,
@@ -336,9 +411,9 @@ export default function BatchLogPage() {
         }}
       >
         <span>
-          Staged this file <span style={{ color: '#f2f2f2' }}>{staging.length}</span>
+          Staged this file <span style={{ color: '#ececec' }}>{staging.length}</span>
         </span>
-        <span>Next: {fileNumber}-{nextPaperNumber(staging)}</span>
+        <span>Next: {fileNumber}-{currentNextPaperNum}</span>
       </div>
 
       {/* Staging Table Card */}
@@ -409,7 +484,7 @@ export default function BatchLogPage() {
                     padding: 10,
                     fontFamily: "'IBM Plex Mono', monospace",
                     fontSize: 13,
-                    color: '#f2f2f2',
+                    color: '#ececec',
                     fontWeight: 600,
                     whiteSpace: 'nowrap',
                   }}
@@ -423,7 +498,7 @@ export default function BatchLogPage() {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#999999',
+                      color: '#8a8a8a',
                       fontSize: 16,
                       cursor: 'pointer',
                       padding: 4,
@@ -454,9 +529,9 @@ export default function BatchLogPage() {
           width: '100%',
           padding: 15,
           borderRadius: 12,
-          border: '1px solid #f2f2f2',
+          border: '1px solid #ececec',
           background: 'transparent',
-          color: '#f2f2f2',
+          color: '#ececec',
           fontSize: 15,
           fontWeight: 700,
           cursor: staging.length === 0 || saving ? 'not-allowed' : 'pointer',
@@ -483,7 +558,7 @@ export default function BatchLogPage() {
             margin: '0 0 8px 4px',
           }}
         >
-          Confirmed history
+          Confirmed history ({history.length})
         </summary>
         <div
           style={{
@@ -535,7 +610,7 @@ export default function BatchLogPage() {
                       padding: 10,
                       fontFamily: "'IBM Plex Mono', monospace",
                       fontSize: 13,
-                      color: '#f2f2f2',
+                      color: '#ececec',
                       fontWeight: 600,
                       whiteSpace: 'nowrap',
                     }}
@@ -547,7 +622,7 @@ export default function BatchLogPage() {
                       padding: 10,
                       fontFamily: "'IBM Plex Mono', monospace",
                       fontSize: 13,
-                      color: '#ececec',
+                      color: '#8a8a8a',
                       wordBreak: 'break-all',
                     }}
                   >
