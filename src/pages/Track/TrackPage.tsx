@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Search, X, QrCode, ArrowLeft, Plus } from 'lucide-react';
+import { Search, X, QrCode, ArrowLeft, Plus, MoreVertical, Eye, Pencil, Trash2 } from 'lucide-react';
 import { useTrackData } from '../../context/TrackDataContext';
 import { useBlocker, useParams, useNavigate } from 'react-router-dom';
 import { useApi } from '../../hooks/useApi';
@@ -9,7 +9,7 @@ import DateTimePicker from '../../components/DateTimePicker';
 import QrScannerModal from '../../components/QrScannerModal';
 import CompanyAutocomplete from '../../components/CompanyAutocomplete';
 import YarnAutocomplete from '../../components/YarnAutocomplete';
-import CopColourPicker from '../../components/CopColourPicker';
+import CopColourPicker, { CopSVGIcon } from '../../components/CopColourPicker';
 
 
 const OPERATORS = [
@@ -98,6 +98,149 @@ function getActiveStage(data: any): string {
   }
   
   return 'route';
+}
+
+// ── Machine Matrix Row Card (chip-based mobile-friendly design) ──────────
+function Chip({ label }: { label: string }) {
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '3px 9px',
+      marginRight: 6,
+      marginBottom: 4,
+      fontSize: 12,
+      lineHeight: 1.4,
+      color: 'var(--primary)',
+      background: 'rgba(var(--primary-rgb, 59,130,246), 0.08)',
+      border: '1px solid rgba(var(--primary-rgb, 59,130,246), 0.3)',
+      borderRadius: 999,
+      whiteSpace: 'nowrap',
+      fontFamily: 'monospace',
+    }}>
+      {label}
+    </span>
+  );
+}
+
+function MatrixRowCard({
+  row,
+  onDelete,
+}: {
+  row: any;
+  onDelete: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const companies = row.company
+    ? row.company.split(',').map((c: string) => c.trim()).filter(Boolean)
+    : ['—'];
+
+  const operatorNames: string[] = [];
+  if (row.name) {
+    const uids = row.name.split(',').map((u: string) => u.trim());
+    const OPERATORS = [
+      { name: 'Vikki kumar',     uid: 'B0CFC3D7-F0D0-44F0-B9FD-B80D2083111A' },
+      { name: 'Subhash Kumar',   uid: 'BD11677D-342B-4CF3-861D-825B4FB81F26' },
+      { name: 'Praphula nayak',  uid: '6AE0CF3D-C748-4014-A0DC-10F0164901E2' },
+    ];
+    uids.forEach((u: string) => {
+      const op = OPERATORS.find(o => o.uid.toLowerCase() === u.toLowerCase());
+      operatorNames.push(op ? op.name : u);
+    });
+  }
+  if (operatorNames.length === 0) operatorNames.push('—');
+
+  const dateLabel = row.date_and_time
+    ? new Date(row.date_and_time).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+    : '—';
+
+  return (
+    <div style={{
+      background: 'var(--surface-2)',
+      border: '1px solid var(--border)',
+      borderRadius: 12,
+      padding: '14px 16px',
+      marginBottom: 10,
+      position: 'relative',
+    }}>
+      {/* Date/time + action menu */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+        <span style={{ fontSize: 12.5, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{dateLabel}</span>
+        <div style={{ position: 'relative' }}>
+          <button
+            type="button"
+            aria-label="Row actions"
+            onClick={() => setMenuOpen(v => !v)}
+            style={{
+              background: 'transparent', border: 'none',
+              color: menuOpen ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer', padding: 2, display: 'flex',
+            }}
+          >
+            <MoreVertical size={18} />
+          </button>
+          {menuOpen && (
+            <div style={{
+              position: 'absolute', right: 0, top: 'calc(100% + 6px)',
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border)',
+              borderRadius: 10, minWidth: 140,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+              zIndex: 20, overflow: 'hidden',
+            }}>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 14, textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Eye size={15} /> View
+              </button>
+              <button
+                type="button"
+                onClick={() => setMenuOpen(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', color: 'var(--text)', fontSize: 14, textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Pencil size={15} /> Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => { onDelete(); setMenuOpen(false); }}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '10px 14px', background: 'transparent', border: 'none', color: 'var(--danger)', fontSize: 14, textAlign: 'left', cursor: 'pointer' }}
+              >
+                <Trash2 size={15} /> Delete
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Company + Total COPs */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 500 }}>
+            Company name
+          </div>
+          <div>{companies.map((c: string) => <Chip key={c} label={c} />)}</div>
+        </div>
+        <div style={{ flexShrink: 0, textAlign: 'right' }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 500 }}>
+            Total COPs
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', fontFamily: 'monospace' }}>
+            {row.cops != null ? row.cops.toLocaleString() : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* Operator */}
+      <div>
+        <div style={{ fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4, fontWeight: 500 }}>
+          Operator
+        </div>
+        <div>{operatorNames.map((o: string) => <Chip key={o} label={o} />)}</div>
+      </div>
+    </div>
+  );
 }
 
 export default function TrackPage() {
@@ -1314,17 +1457,73 @@ export default function TrackPage() {
                         )}
 
                         {/* ── STAGE 4b/5: MACHINE MATRIX ── */}
-                        {stage === 'machine' && (
+                        {stage === 'machine' && (() => {
+                          const tfoData = currentBatchData?.tfo;
+                          const sColHex = tfoData?.color_s_hex || '#888888';
+                          const zColHex = tfoData?.color_z_hex || '#888888';
+                          const sColName = tfoData?.color_s || '—';
+                          const zColName = tfoData?.color_z || '—';
+                          return (
                           <div style={{ position: 'relative', minHeight: '300px' }}>
+                            {/* ── Batch Chain card with cop icons ── */}
                             <div className="locked-card" style={{ marginBottom: '20px' }}>
                               <div className="lh">
                                 <b>Batch Chain · Active</b>
                               </div>
-                              <div className="locked-grid">
+                              <div className="locked-grid" style={{ marginBottom: 12 }}>
                                 <div className="locked-field"><span>Lot</span><b>{winLot}</b></div>
                                 <div className="locked-field"><span>Company</span><b>{winCompany}</b></div>
                                 <div className="locked-field"><span>Yarn</span><b>{winYarn}</b></div>
+                                <div className="locked-field"><span>TPM</span><b>{tfoData?.tpm ?? '—'}</b></div>
+                                <div className="locked-field"><span>COPs</span><b>{tfoData?.cops ?? '—'}</b></div>
                                 <div className="locked-field"><span>Destination</span><b>Machine Matrix</b></div>
+                              </div>
+                              {/* S & Z cop colour display */}
+                              <div style={{ display: 'flex', gap: 20, paddingTop: 8, borderTop: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                  <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style={{ width: 36, height: 44 }}>
+                                    <defs>
+                                      <mask id="mm-s-mask">
+                                        <rect x="0" y="0" width="100" height="120" fill="white" />
+                                        <rect x="32" y="35" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="46" y="35" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="60" y="35" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="32" y="65" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="46" y="65" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="60" y="65" width="8" height="12" rx="2" fill="black" />
+                                        <ellipse cx="50" cy="20" rx="16" ry="6" fill="black" />
+                                      </mask>
+                                    </defs>
+                                    <g stroke="#404040" strokeWidth="1.2">
+                                      <ellipse cx="50" cy="100" rx="45" ry="12" fill={sColHex} />
+                                      <rect x="25" y="20" width="50" height="80" fill={sColHex} mask="url(#mm-s-mask)" />
+                                      <ellipse cx="50" cy="20" rx="45" ry="12" fill={sColHex} mask="url(#mm-s-mask)" />
+                                    </g>
+                                  </svg>
+                                  <span style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 56 }}>S · {sColName}</span>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                                  <svg viewBox="0 0 100 120" xmlns="http://www.w3.org/2000/svg" style={{ width: 36, height: 44 }}>
+                                    <defs>
+                                      <mask id="mm-z-mask">
+                                        <rect x="0" y="0" width="100" height="120" fill="white" />
+                                        <rect x="32" y="35" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="46" y="35" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="60" y="35" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="32" y="65" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="46" y="65" width="8" height="12" rx="2" fill="black" />
+                                        <rect x="60" y="65" width="8" height="12" rx="2" fill="black" />
+                                        <ellipse cx="50" cy="20" rx="16" ry="6" fill="black" />
+                                      </mask>
+                                    </defs>
+                                    <g stroke="#404040" strokeWidth="1.2">
+                                      <ellipse cx="50" cy="100" rx="45" ry="12" fill={zColHex} />
+                                      <rect x="25" y="20" width="50" height="80" fill={zColHex} mask="url(#mm-z-mask)" />
+                                      <ellipse cx="50" cy="20" rx="45" ry="12" fill={zColHex} mask="url(#mm-z-mask)" />
+                                    </g>
+                                  </svg>
+                                  <span style={{ fontSize: 10, color: 'var(--text-muted)', textAlign: 'center', maxWidth: 56 }}>Z · {zColName}</span>
+                                </div>
                               </div>
                             </div>
 
@@ -1335,46 +1534,20 @@ export default function TrackPage() {
                                 : `Logs of machine matrix runs for this batch (${currentBatchData?.machine?.length || 0}/10 rows added).`}
                             </p>
 
-                            <div className="card" style={{ overflowX: 'auto', marginTop: '16px' }}>
+                            {/* Card-based table */}
+                            <div style={{ marginTop: 16 }}>
                               {(!currentBatchData?.machine || currentBatchData.machine.length === 0) ? (
-                                <div style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                                  No matrix records found. Click the + button to add the first one.
+                                <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', background: 'var(--surface-2)', borderRadius: 12, border: '1px solid var(--border)' }}>
+                                  No matrix records yet. Click the <b>+</b> button to add the first entry.
                                 </div>
                               ) : (
-                                <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                  <thead>
-                                    <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)', textAlign: 'left', fontSize: '12px', textTransform: 'uppercase', color: 'var(--text-muted)' }}>
-                                      <th style={{ padding: '12px 16px' }}>Date & Time</th>
-                                      <th style={{ padding: '12px 16px' }}>Company</th>
-                                      <th style={{ padding: '12px 16px' }}>Total Cops</th>
-                                      <th style={{ padding: '12px 16px' }}>Operator</th>
-                                      <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {currentBatchData.machine.map((r: any) => (
-                                      <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>
-                                          {r.date_and_time ? new Date(r.date_and_time).toLocaleString() : '—'}
-                                        </td>
-                                        <td style={{ padding: '12px 16px', fontWeight: 600, fontSize: '13px' }}>{r.company || '—'}</td>
-                                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>{r.cops ?? '—'}</td>
-                                        <td style={{ padding: '12px 16px', fontSize: '13px' }}>{getOperatorName(r.name || '')}</td>
-                                        <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                                          <button
-                                            type="button"
-                                            className="btn btn-ghost btn-icon btn-sm"
-                                            onClick={() => deleteMachineRow(r.id)}
-                                            style={{ color: 'var(--danger)' }}
-                                            title="Delete entry"
-                                          >
-                                            <X size={15} />
-                                          </button>
-                                        </td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
+                                currentBatchData.machine.map((r: any) => (
+                                  <MatrixRowCard
+                                    key={r.id}
+                                    row={r}
+                                    onDelete={() => deleteMachineRow(r.id)}
+                                  />
+                                ))
                               )}
                             </div>
 
@@ -1396,7 +1569,8 @@ export default function TrackPage() {
                               </button>
                             )}
                           </div>
-                        )}
+                          );
+                        })()}
 
                         {/* ── STAGE: COMPLETE ── */}
                         {stage === 'complete' && (
