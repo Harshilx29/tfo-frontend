@@ -6,7 +6,7 @@ interface SaveButtonProps {
   onSave: () => Promise<void>;
   label: string;
   savingLabel?: string;
-  permissionKey: string;
+  permissionKey: string | string[];
   className?: string;
   disabled?: boolean;
 }

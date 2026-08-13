@@ -291,7 +291,7 @@ export default function MachineTab({ uid, rows: rawRows, onSaved, onDirtyChange 
 
                 {/* Delete */}
                 <td style={{ textAlign: 'center' }}>
-                  <PermissionGate permissionKey="track.machine.delete_row">
+                  <PermissionGate permissionKey={['track.section2.write', 'track.section2.update', 'track.machine.delete_row']}>
                     <button
                       className="btn btn-ghost btn-icon btn-sm"
                       onClick={() => removeRow(row._key)}
@@ -324,7 +324,7 @@ export default function MachineTab({ uid, rows: rawRows, onSaved, onDirtyChange 
           <SaveButton
             onSave={handleSave}
             label="Save Machine Log"
-            permissionKey="track.machine.save"
+            permissionKey={['track.section2.write', 'track.section2.update', 'track.machine.save']}
             disabled={saving}
           />
         </div>

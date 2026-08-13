@@ -3,7 +3,7 @@ import { usePermission } from '../hooks/usePermission';
 import { useTempAccess } from '../context/TempAccessContext';
 
 interface Props {
-  permissionKey: string;
+  permissionKey: string | string[];
   children: React.ReactElement;
   /** Tooltip text shown on hover when disabled. Defaults to standard message. */
   tip?: string;

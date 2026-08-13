@@ -159,7 +159,7 @@ export default function WindingTab({ uid, data, onSaved, onDirtyChange }: Props)
         <SaveButton
           onSave={handleSave}
           label="Save Winding"
-          permissionKey="track.winding.save"
+          permissionKey={['track.section1.write', 'track.section1.update', 'track.winding.save']}
           disabled={!isCompanyValid || !isYarnValid}
         />
       </div>

@@ -1115,7 +1115,7 @@ export default function TrackPage() {
                               <SaveButton
                                 onSave={submitWinding}
                                 label="Submit → send to TFO Loading"
-                                permissionKey="track.winding.save"
+                                permissionKey={['track.section1.write', 'track.section1.update', 'track.winding.save']}
                                 className="btn btn-primary"
                                 disabled={!winDate || !winCompany.trim() || !winMachine || !winYarn.trim() || !winLot.trim() || !isWinCompanyValid || !isWinYarnValid}
                               />
@@ -1207,7 +1207,7 @@ export default function TrackPage() {
                               <SaveButton
                                 onSave={submitTFOLoading}
                                 label="Save Loading → Proceed to Unloading"
-                                permissionKey="track.tfo.save"
+                                permissionKey={['track.section1.write', 'track.section1.update', 'track.tfo.save']}
                                 className="btn btn-primary"
                                 disabled={!tfoLoadTime || !tfoMachine || !tfoTpm || !tfoCops || !tfoSCol.trim() || !tfoZCol.trim()}
                               />
@@ -1281,7 +1281,7 @@ export default function TrackPage() {
                               <SaveButton
                                 onSave={submitTFOUnloading}
                                 label="Submit Unloading → send to Boiler"
-                                permissionKey="track.tfo.save"
+                                permissionKey={['track.section1.write', 'track.section1.update', 'track.tfo.save']}
                                 className="btn btn-primary"
                                 disabled={!tfoUnloadTime}
                               />
@@ -1371,7 +1371,7 @@ export default function TrackPage() {
                               <SaveButton
                                 onSave={submitBoiler}
                                 label="Submit → routing"
-                                permissionKey="track.boiler.save"
+                                permissionKey={['track.section1.write', 'track.section1.update', 'track.boiler.save']}
                                 className="btn btn-primary"
                                 disabled={!boilerTime || !boilerCops || !boilerTemp || !boilerDur || !boilerOp.trim()}
                               />
@@ -1467,7 +1467,7 @@ export default function TrackPage() {
                               <SaveButton
                                 onSave={submitWarping}
                                 label="Complete batch"
-                                permissionKey="track.warping.save"
+                                permissionKey={['track.section2.write', 'track.section2.update', 'track.warping.save']}
                                 className="btn btn-primary"
                                 disabled={!warpDate || !warpMachine}
                               />

@@ -161,7 +161,7 @@ export default function BoilerTab({ uid, data, onSaved, onDirtyChange }: Props) 
         <SaveButton
           onSave={handleSave}
           label="Save Boiler"
-          permissionKey="track.boiler.save"
+          permissionKey={['track.section1.write', 'track.section1.update', 'track.boiler.save']}
         />
       </div>
     </div>

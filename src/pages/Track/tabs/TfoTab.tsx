@@ -199,7 +199,7 @@ export default function TfoTab({ uid, data, onSaved, onDirtyChange }: Props) {
         <SaveButton
           onSave={handleSave}
           label="Save TFO"
-          permissionKey="track.tfo.save"
+          permissionKey={['track.section1.write', 'track.section1.update', 'track.tfo.save']}
         />
       </div>
     </div>

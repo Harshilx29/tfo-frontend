@@ -132,7 +132,7 @@ export default function WarpingTab({ uid, data, onSaved, onDirtyChange }: Props)
         <SaveButton
           onSave={handleSave}
           label="Save Warping"
-          permissionKey="track.warping.save"
+          permissionKey={['track.section2.write', 'track.section2.update', 'track.warping.save']}
         />
       </div>
     </div>
