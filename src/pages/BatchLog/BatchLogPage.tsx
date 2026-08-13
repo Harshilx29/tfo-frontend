@@ -82,8 +82,14 @@ export default function BatchLogPage() {
 
   // Add paper UID to staging after validating against pending pool
   const addStagedRow = (scannedUid: string) => {
-    const cleanUid = scannedUid.trim();
+    let cleanUid = scannedUid.trim();
     if (!cleanUid) return;
+
+    // Strip leading "TFO=" prefix if present (e.g. TFO=26-1 -> 26-1, TFO=26-35 -> 26-35)
+    const tfoMatch = cleanUid.match(/^TFO=(.+)$/i);
+    if (tfoMatch) {
+      cleanUid = tfoMatch[1].trim();
+    }
 
     // Check if in staging already
     if (staging.some((r) => r.uid.toLowerCase() === cleanUid.toLowerCase())) {
@@ -408,6 +414,9 @@ export default function BatchLogPage() {
         isOpen={qrOpen}
         onClose={() => setQrOpen(false)}
         title="Scan Paper QR Code"
+        validationRegex={/^(TFO=)?\d{2}-\d+$/i}
+        validationErrorMessage="Invalid QR format. Expected TFO=YY-Number (e.g. TFO=26-1 or TFO=26-35)"
+        hintText="Scan a paper QR code starting with 'TFO=' (e.g. TFO=26-1 or TFO=26-35)"
         onScanSuccess={(scannedText) => {
           addStagedRow(scannedText);
           setQrOpen(false);
