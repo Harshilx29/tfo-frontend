@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { QrCode, X, Check } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { ClipboardList, Plus, Search, QrCode, X } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../context/ToastContext';
 import QrScannerModal from '../../components/QrScannerModal';
@@ -16,14 +16,10 @@ interface StagedRow {
   num: number;
 }
 
-interface HistoryRow {
-  record: string;
-  uid: string;
-}
-
 export default function BatchLogPage() {
   const api = useApi();
   const { addToast } = useToast();
+  const pageBodyRef = useRef<HTMLDivElement>(null);
 
   const [fileNumber, setFileNumber] = useState<number>(() => {
     try {
@@ -39,12 +35,9 @@ export default function BatchLogPage() {
   const [baseNextPaperNum, setBaseNextPaperNum] = useState(1);
 
   const [staging, setStaging] = useState<StagedRow[]>([]);
-  const [history, setHistory] = useState<HistoryRow[]>([]);
+  const [paperInput, setPaperInput] = useState('');
   const [qrOpen, setQrOpen] = useState(false);
-  const [showManual, setShowManual] = useState(false);
-  const [manualInput, setManualInput] = useState('');
   const [saving, setSaving] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(true);
 
   // 1. Fetch pending pool (up to ~80 rows where file_number IS NULL)
   const fetchPendingPool = useCallback(async () => {
@@ -71,21 +64,10 @@ export default function BatchLogPage() {
     }
   }, [api]);
 
-  // Load pending pool & recent history on mount
+  // Load pending pool on mount
   useEffect(() => {
     void fetchPendingPool();
-    api.get<any[]>('/batch-log/recent')
-      .then((data) => {
-        if (data && Array.isArray(data)) {
-          const recs: HistoryRow[] = data.map((item) => ({
-            record: item.file_number,
-            uid: item.uid,
-          }));
-          setHistory(recs);
-        }
-      })
-      .catch(() => {});
-  }, [fetchPendingPool, api]);
+  }, [fetchPendingPool]);
 
   // When fileNumber changes, re-fetch true next paper number from DB
   useEffect(() => {
@@ -95,10 +77,10 @@ export default function BatchLogPage() {
     } catch {}
   }, [fileNumber, fetchNextPaperNumber]);
 
-  // Derive next paper number for staging (baseNextPaperNum + current staging count)
+  // Derive next paper number for staging
   const currentNextPaperNum = baseNextPaperNum + staging.length;
 
-  // Add scanned paper UID to staging after validating against pending pool
+  // Add paper UID to staging after validating against pending pool
   const addStagedRow = (scannedUid: string) => {
     const cleanUid = scannedUid.trim();
     if (!cleanUid) return;
@@ -112,7 +94,7 @@ export default function BatchLogPage() {
     // Match scanned UID against pending pool (instant local check)
     const match = pendingPool.find((p) => p.uid.toLowerCase() === cleanUid.toLowerCase());
     if (!match) {
-      addToast(`Error: Paper "${cleanUid}" is not in the pending pool (unknown or already assigned)`, 'error');
+      addToast(`Error: Paper "${cleanUid}" is not in pending pool (unknown or already assigned)`, 'error');
       return;
     }
 
@@ -133,20 +115,13 @@ export default function BatchLogPage() {
     });
   };
 
-  // Increment-only file number control (no decrement button)
+  // Increment-only file number control (+ New File pill button)
   const incrementFileNumber = () => {
     if (staging.length && !window.confirm(`You have unconfirmed scans for File ${fileNumber}. Switching files will discard staged scans. Continue?`)) {
       return;
     }
     setFileNumber((prev) => prev + 1);
     setStaging([]);
-  };
-
-  const handleManualAdd = () => {
-    if (manualInput.trim()) {
-      addStagedRow(manualInput.trim());
-      setManualInput('');
-    }
   };
 
   // Confirm & Save with conditional update check
@@ -169,31 +144,20 @@ export default function BatchLogPage() {
         const succeeded = res.results.filter((r: any) => r.ok);
 
         if (failed.length > 0) {
-          // Surface specific conflicts
           const conflictUids = failed.map((f: any) => `${f.uid} (${f.error})`).join(', ');
           addToast(`Conflict detected: ${conflictUids}`, 'error');
 
-          // Keep failed rows in staging so user can redo or remove
           const failedUidSet = new Set(failed.map((f: any) => f.uid.toLowerCase()));
           setStaging((prev) => prev.filter((r) => failedUidSet.has(r.uid.toLowerCase())));
         } else {
           addToast(`Successfully confirmed ${succeeded.length} paper(s) to File ${fileNumber}`, 'success');
           setStaging([]);
         }
-
-        if (succeeded.length > 0) {
-          const newHistory: HistoryRow[] = succeeded.map((s: any) => ({
-            record: s.file_number,
-            uid: s.uid,
-          }));
-          setHistory((prev) => [...newHistory, ...prev]);
-        }
       } else {
         addToast(`Saved ${staging.length} paper(s) to File ${fileNumber}`, 'success');
         setStaging([]);
       }
 
-      // Always refresh pending pool & next paper number after confirm attempt
       void fetchPendingPool();
       void fetchNextPaperNumber(fileNumber);
     } catch (e: unknown) {
@@ -203,427 +167,197 @@ export default function BatchLogPage() {
     }
   };
 
-  // Reversed staging list (newest scanned at the top)
+  // Reversed staging list (newest scanned at top)
   const reversedStaging = staging.slice().reverse();
 
   return (
-    <div
-      style={{
-        background: '#101010',
-        color: '#ececec',
-        height: '100%',
-        overflowY: 'auto',
-        WebkitOverflowScrolling: 'touch',
-        padding: '20px 16px 120px',
-        maxWidth: 520,
-        margin: '0 auto',
-        fontFamily: "'IBM Plex Sans', sans-serif",
-        boxSizing: 'border-box',
-      }}
-    >
-      {/* Sentence-case plain header title matching Track page */}
+    <div className="company-page" style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--bg)' }}>
+      {/* Header — matching Companies page header */}
       <header
+        className="page-header"
         style={{
+          padding: '16px',
+          borderBottom: '1px solid var(--border)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 20,
         }}
       >
-        <h1
-          style={{
-            fontSize: 20,
-            fontWeight: 600,
-            color: '#ececec',
-            margin: 0,
-            letterSpacing: '-0.01em',
-          }}
-        >
+        <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>
+          <ClipboardList size={20} />
           Batch Log
+          <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '4px' }}>
+            (File #{fileNumber} · Pool: {loadingPending ? '…' : pendingPool.length})
+          </span>
         </h1>
-        <span
-          style={{
-            fontFamily: "'IBM Plex Mono', monospace",
-            fontSize: 12,
-            fontWeight: 600,
-            color: '#ececec',
-            background: '#1a1a1a',
-            border: '1px solid #333333',
-            borderRadius: 20,
-            padding: '3px 10px',
-          }}
-        >
-          Pool: {loadingPending ? '…' : pendingPool.length}
-        </span>
-      </header>
-
-      {/* File Number Card (Increment-only) */}
-      <div
-        style={{
-          background: '#1a1a1a',
-          border: '1px solid #333333',
-          borderRadius: 14,
-          padding: 16,
-          marginBottom: 14,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 11,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: '#8a8a8a',
-            marginBottom: 6,
-            display: 'block',
-            fontWeight: 500,
-          }}
-        >
-          File Number
-        </span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              fontFamily: "'IBM Plex Mono', monospace",
-              fontSize: 34,
-              fontWeight: 600,
-              color: '#ececec',
-              lineHeight: 1,
-              flex: 1,
-            }}
-          >
-            {fileNumber}
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              onClick={incrementFileNumber}
-              style={{
-                background: '#232323',
-                border: '1px solid #333333',
-                color: '#ececec',
-                width: 42,
-                height: 42,
-                borderRadius: 10,
-                fontSize: 20,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-              aria-label="Increase file number"
-              title="Increment File Number"
-            >
-              +
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Scanner Card */}
-      <div
-        style={{
-          background: '#1a1a1a',
-          border: '1px solid #333333',
-          borderRadius: 14,
-          padding: 16,
-          marginBottom: 14,
-        }}
-      >
         <button
           type="button"
-          onClick={() => setQrOpen(true)}
-          style={{
-            width: '100%',
-            padding: 16,
-            borderRadius: 12,
-            border: 'none',
-            background: '#ececec',
-            color: '#111111',
-            fontSize: 16,
-            fontWeight: 700,
-            letterSpacing: '0.02em',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 10,
-          }}
+          className="btn btn-primary btn-sm"
+          onClick={incrementFileNumber}
+          title="Increment File Number"
         >
-          <QrCode size={20} />
-          <span>Scan Paper</span>
+          <Plus size={16} /> New File
         </button>
+      </header>
 
-        <div
-          onClick={() => setShowManual((v) => !v)}
-          style={{
-            textAlign: 'center',
-            marginTop: 10,
-            fontSize: 12,
-            color: '#8a8a8a',
-            textDecoration: 'underline',
-            cursor: 'pointer',
-          }}
-        >
-          {showManual ? 'Hide manual entry' : 'Enter UID manually instead'}
-        </div>
-
-        {showManual && (
-          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+      {/* Page Body with full vertical scrolling */}
+      <div className="page-body" ref={pageBodyRef} style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: '100px' }}>
+        {/* Search-bar-style input row matching Companies search bar + QR icon button */}
+        <div className="search-bar-container" style={{ margin: '16px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <Search size={16} style={{ position: 'absolute', left: 12, top: 10, color: 'var(--text-muted)' }} />
             <input
               type="text"
-              value={manualInput}
-              onChange={(e) => setManualInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleManualAdd()}
-              placeholder="Paper UID"
-              autoComplete="off"
+              className="search-input"
+              placeholder="Enter or scan paper UID..."
+              value={paperInput}
+              onChange={(e) => setPaperInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && paperInput.trim()) {
+                  addStagedRow(paperInput.trim());
+                  setPaperInput('');
+                }
+              }}
               style={{
-                flex: 1,
-                background: '#232323',
-                border: '1px solid #333333',
-                borderRadius: 10,
-                color: '#ececec',
-                padding: 12,
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 14,
+                width: '100%',
+                padding: '8px 12px 8px 36px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border)',
+                background: 'var(--surface-2)',
+                color: 'var(--text)',
+                fontSize: '14px',
+                fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)",
               }}
             />
-            <button
-              type="button"
-              onClick={handleManualAdd}
-              style={{
-                background: '#232323',
-                border: '1px solid #333333',
-                color: '#ececec',
-                borderRadius: 10,
-                padding: '0 16px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Add
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Section Subhead */}
-      <div
-        style={{
-          fontSize: 11,
-          textTransform: 'uppercase',
-          letterSpacing: '0.08em',
-          color: '#8a8a8a',
-          margin: '22px 0 10px 4px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontWeight: 600,
-        }}
-      >
-        <span>
-          Staged this file <span style={{ color: '#ececec' }}>({staging.length})</span>
-        </span>
-        <span>Next: {fileNumber}-{currentNextPaperNum}</span>
-      </div>
-
-      {/* Staged Cards List (Newest First) */}
-      <div style={{ marginBottom: 14 }}>
-        {reversedStaging.length === 0 ? (
-          <div
-            style={{
-              textAlign: 'center',
-              color: '#8a8a8a',
-              fontSize: 13,
-              padding: '28px 16px',
-              background: '#1a1a1a',
-              border: '1px solid #333333',
-              borderRadius: 14,
-            }}
-          >
-            No papers scanned yet for this file.
-          </div>
-        ) : (
-          reversedStaging.map((r, reverseIdx) => {
-            const originalIndex = staging.length - 1 - reverseIdx;
-            return (
-              <div
-                key={`${r.uid}-${r.num}`}
+            {paperInput.trim() && (
+              <button
+                type="button"
+                onClick={() => setPaperInput('')}
                 style={{
-                  background: '#1a1a1a',
-                  border: '1px solid #333333',
-                  borderRadius: 14,
-                  padding: 16,
-                  marginBottom: 10,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 12,
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                  position: 'absolute',
+                  right: 10,
+                  top: 8,
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
                 }}
               >
-                {/* Header row with Record Badge (top-left) & Remove button (top-right) */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span
-                    style={{
-                      fontFamily: "'IBM Plex Mono', monospace",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#ececec',
-                      background: '#232323',
-                      padding: '4px 10px',
-                      borderRadius: 6,
-                      border: '1px solid #444444',
-                    }}
-                  >
-                    {fileNumber}-{r.num}
-                  </span>
+                <X size={14} />
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            title="Scan Paper QR Code"
+            onClick={() => setQrOpen(true)}
+            style={{
+              height: 36,
+              width: 36,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--border)',
+              background: 'var(--surface-2)',
+              color: 'var(--text)',
+              cursor: 'pointer',
+              flexShrink: 0,
+            }}
+          >
+            <QrCode size={18} />
+          </button>
+        </div>
+
+        {/* Section Subhead */}
+        <div
+          style={{
+            padding: '0 16px 8px',
+            fontSize: '11px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            color: 'var(--text-muted)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            fontWeight: 600,
+          }}
+        >
+          <span>Staged Papers ({staging.length})</span>
+          <span>Next: {fileNumber}-{currentNextPaperNum}</span>
+        </div>
+
+        {/* Plain divided list matching Companies list items */}
+        {reversedStaging.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>
+            No papers scanned yet for File #{fileNumber}.
+          </div>
+        ) : (
+          <ul className="company-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {reversedStaging.map((r, reverseIdx) => {
+              const originalIndex = staging.length - 1 - reverseIdx;
+              return (
+                <li
+                  key={`${r.uid}-${r.num}`}
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '14px 16px',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)", fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>
+                      {fileNumber}-{r.num}
+                    </span>
+                    <span style={{ fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)", fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {r.uid}
+                    </span>
+                  </div>
                   <button
                     type="button"
                     onClick={() => removeStagedRow(originalIndex)}
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: '#8a8a8a',
-                      fontSize: 16,
+                      color: 'var(--text-muted)',
                       cursor: 'pointer',
-                      padding: '2px 6px',
+                      padding: 6,
                       display: 'flex',
                       alignItems: 'center',
                     }}
-                    aria-label="Remove"
                     title="Remove paper"
                   >
                     <X size={16} />
                   </button>
-                </div>
-
-                {/* Details row matching Track label style */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8a8a8a', fontWeight: 600 }}>
-                    UID
-                  </span>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#ececec', wordBreak: 'break-all', fontWeight: 500 }}>
-                    {r.uid}
-                  </span>
-                </div>
-              </div>
-            );
-          })
+                </li>
+              );
+            })}
+          </ul>
         )}
-      </div>
 
-      {/* Confirm & Save Button */}
-      <button
-        type="button"
-        onClick={handleConfirmSave}
-        disabled={staging.length === 0 || saving}
-        style={{
-          width: '100%',
-          padding: 15,
-          borderRadius: 12,
-          border: '1px solid #ececec',
-          background: 'transparent',
-          color: '#ececec',
-          fontSize: 15,
-          fontWeight: 700,
-          cursor: staging.length === 0 || saving ? 'not-allowed' : 'pointer',
-          marginBottom: 20,
-          opacity: staging.length === 0 || saving ? 0.35 : 1,
-        }}
-      >
-        {saving ? 'Saving…' : 'Confirm & Save to Database'}
-      </button>
-
-      {/* Confirmed History Section */}
-      <details
-        open={historyOpen}
-        onToggle={(e) => setHistoryOpen((e.target as HTMLDetailsElement).open)}
-        style={{ marginTop: 10 }}
-      >
-        <summary
-          style={{
-            cursor: 'pointer',
-            fontSize: 11,
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            color: '#8a8a8a',
-            margin: '0 0 10px 4px',
-            fontWeight: 600,
-          }}
-        >
-          Confirmed history ({history.length})
-        </summary>
-
-        {history.length === 0 ? (
-          <div
-            style={{
-              textAlign: 'center',
-              color: '#8a8a8a',
-              fontSize: 13,
-              padding: '24px 16px',
-              background: '#1a1a1a',
-              border: '1px solid #333333',
-              borderRadius: 14,
-            }}
-          >
-            Nothing confirmed yet.
-          </div>
-        ) : (
-          history.slice(0, 50).map((h, idx) => (
-            <div
-              key={`${h.record}-${h.uid}-${idx}`}
+        {/* Confirm & Save Button */}
+        {staging.length > 0 && (
+          <div style={{ padding: '16px' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleConfirmSave}
+              disabled={saving}
               style={{
-                background: '#1a1a1a',
-                border: '1px solid #333333',
-                borderRadius: 14,
-                padding: 16,
-                marginBottom: 10,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
+                width: '100%',
+                padding: '14px',
+                fontSize: '15px',
+                fontWeight: 600,
+                borderRadius: 'var(--radius-md)',
+                cursor: saving ? 'not-allowed' : 'pointer',
               }}
             >
-              {/* Header row with Record Badge (top-left) & Confirmed Status (top-right) */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span
-                  style={{
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: '#ececec',
-                    background: '#232323',
-                    padding: '4px 10px',
-                    borderRadius: 6,
-                    border: '1px solid #444444',
-                  }}
-                >
-                  {h.record}
-                </span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    color: '#8a8a8a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                >
-                  <Check size={13} /> Confirmed
-                </span>
-              </div>
-
-              {/* Details row matching Track label style */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8a8a8a', fontWeight: 600 }}>
-                  UID
-                </span>
-                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#ececec', wordBreak: 'break-all', fontWeight: 500 }}>
-                  {h.uid}
-                </span>
-              </div>
-            </div>
-          ))
+              {saving ? 'Saving…' : `Confirm & Save (${staging.length}) to File #${fileNumber}`}
+            </button>
+          </div>
         )}
-      </details>
+      </div>
 
       <QrScannerModal
         isOpen={qrOpen}
