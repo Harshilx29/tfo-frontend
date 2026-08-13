@@ -115,13 +115,42 @@ export default function BatchLogPage() {
     });
   };
 
-  // Increment-only file number control (+ New File pill button)
-  const incrementFileNumber = () => {
-    if (staging.length && !window.confirm(`You have unconfirmed scans for File ${fileNumber}. Switching files will discard staged scans. Continue?`)) {
+  // Switch to a specific File Number (e.g. back to File #1)
+  const changeFileNumber = () => {
+    const input = window.prompt(`Enter File Number to switch to:`, String(fileNumber));
+    if (input === null) return;
+
+    const parsed = parseInt(input.trim(), 10);
+    if (isNaN(parsed) || parsed < 1) {
+      addToast('Invalid File Number — please enter a positive integer', 'error');
       return;
     }
-    setFileNumber((prev) => prev + 1);
+
+    if (parsed === fileNumber) return;
+
+    if (staging.length > 0) {
+      if (!window.confirm(`Switching to File #${parsed} will clear ${staging.length} staged scan(s) for File #${fileNumber}. Continue?`)) {
+        return;
+      }
+    }
+
+    setFileNumber(parsed);
     setStaging([]);
+    addToast(`Switched to File #${parsed}`, 'info');
+  };
+
+  // Increment-only file number control (+ New File pill button with confirmation warning)
+  const incrementFileNumber = () => {
+    const nextNum = fileNumber + 1;
+    const warningMsg = staging.length > 0
+      ? `Start File #${nextNum}? Warning: Staging has ${staging.length} unconfirmed scan(s) for File #${fileNumber} which will be discarded.`
+      : `Are you sure you want to start a new file? Current File #${fileNumber} will change to File #${nextNum}.`;
+
+    if (!window.confirm(warningMsg)) return;
+
+    setFileNumber(nextNum);
+    setStaging([]);
+    addToast(`Started File #${nextNum}`, 'info');
   };
 
   // Confirm & Save with conditional update check
@@ -150,7 +179,7 @@ export default function BatchLogPage() {
           const failedUidSet = new Set(failed.map((f: any) => f.uid.toLowerCase()));
           setStaging((prev) => prev.filter((r) => failedUidSet.has(r.uid.toLowerCase())));
         } else {
-          addToast(`Successfully confirmed ${succeeded.length} paper(s) to File ${fileNumber}`, 'success');
+          addToast(`Successfully confirmed ${succeeded.length} paper(s) to File #${fileNumber}`, 'success');
           setStaging([]);
         }
       } else {
@@ -186,15 +215,31 @@ export default function BatchLogPage() {
         <h1 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '18px', fontWeight: 600, color: 'var(--text)' }}>
           <ClipboardList size={20} />
           Batch Log
-          <span style={{ fontSize: '12px', fontWeight: 400, color: 'var(--text-muted)', marginLeft: '4px' }}>
-            (File #{fileNumber} · Pool: {loadingPending ? '…' : pendingPool.length})
-          </span>
+          <button
+            type="button"
+            onClick={changeFileNumber}
+            title="Click to switch File Number"
+            style={{
+              background: 'var(--surface-2)',
+              border: '1px solid var(--border)',
+              color: 'var(--text)',
+              fontSize: '12px',
+              fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)",
+              padding: '2px 8px',
+              borderRadius: '12px',
+              cursor: 'pointer',
+              marginLeft: '4px',
+              fontWeight: 500,
+            }}
+          >
+            File #{fileNumber} ✎
+          </button>
         </h1>
         <button
           type="button"
           className="btn btn-primary btn-sm"
           onClick={incrementFileNumber}
-          title="Increment File Number"
+          title="Start a new File Number"
         >
           <Plus size={16} /> New File
         </button>
