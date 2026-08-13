@@ -52,6 +52,11 @@ function formatDateTimeLocal(dateStr: string) {
 function getActiveStage(data: any): string {
   if (!data) return '1';
   
+  // 0. Check if batch is marked completed on main table
+  if (data.main?.is_completed) {
+    return 'complete';
+  }
+
   // 1. Winding check
   const winding = data.winding;
   if (!winding || !winding.date || !winding.company || !winding.yarn_type || !winding.lot_number) {
@@ -751,8 +756,22 @@ export default function TrackPage() {
       warping_1: warpMachine === 'Warping 1',
       warping_2: warpMachine === 'Warping 2'
     });
-    addToast('Batch complete', 'success');
+    addToast('Warping saved — batch completed!', 'success');
     await refreshAll();
+    setStage('complete');
+  };
+
+  // Complete Batch handler (e.g. from Machine Matrix when COPs match)
+  const handleCompleteBatch = async () => {
+    if (!uid) return;
+    try {
+      await api.put(`/track/${encodeURIComponent(uid)}/complete`, {});
+      addToast('Batch completed successfully!', 'success');
+      await refreshAll();
+      setStage('complete');
+    } catch (e: unknown) {
+      addToast(e instanceof Error ? e.message : 'Failed to complete batch', 'error');
+    }
   };
 
   // Submit Machine Matrix details (saving a new row)
@@ -1463,6 +1482,11 @@ export default function TrackPage() {
                           const zColHex = tfoData?.color_z_hex || '#888888';
                           const sColName = tfoData?.color_s || '—';
                           const zColName = tfoData?.color_z || '—';
+
+                          const totalMachineCops = (currentBatchData?.machine || []).reduce((sum: number, r: any) => sum + (Number(r.cops) || 0), 0);
+                          const boilerCops = Number(currentBatchData?.boiler?.cops) || Number(currentBatchData?.tfo?.cops) || 0;
+                          const isCopsMatched = boilerCops > 0 && totalMachineCops === boilerCops;
+
                           return (
                           <div style={{ position: 'relative', minHeight: '300px' }}>
                             {/* ── Batch Chain card with cop icons ── */}
@@ -1527,6 +1551,38 @@ export default function TrackPage() {
                               </div>
                             </div>
 
+                            {/* COPs matching progress banner */}
+                            <div style={{
+                              marginBottom: 16,
+                              padding: '12px 16px',
+                              borderRadius: 12,
+                              background: isCopsMatched ? 'rgba(74, 222, 128, 0.08)' : 'var(--surface-2)',
+                              border: `1px solid ${isCopsMatched ? '#4ade80' : 'var(--border)'}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                            }}>
+                              <div>
+                                <div style={{ fontSize: 10, textTransform: 'uppercase', color: 'var(--text-muted)', letterSpacing: '0.06em', fontWeight: 600 }}>
+                                  Matrix COPs Progress
+                                </div>
+                                <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginTop: 2, fontFamily: 'monospace' }}>
+                                  {totalMachineCops.toLocaleString()} / {boilerCops.toLocaleString()} COPs
+                                </div>
+                              </div>
+                              {isCopsMatched ? (
+                                <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 600, background: 'rgba(74, 222, 128, 0.15)', padding: '4px 10px', borderRadius: 20 }}>
+                                  ✓ COPs Matched
+                                </span>
+                              ) : (
+                                <span style={{ fontSize: 12, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                                  {totalMachineCops > boilerCops
+                                    ? `⚠️ Exceeds by ${totalMachineCops - boilerCops}`
+                                    : `${boilerCops - totalMachineCops} remaining`}
+                                </span>
+                              )}
+                            </div>
+
                             <h2 className="section-title">Machine Matrix Logs</h2>
                             <p className="section-sub">
                               {currentBatchData?.machine && currentBatchData.machine.length >= 10
@@ -1550,6 +1606,32 @@ export default function TrackPage() {
                                 ))
                               )}
                             </div>
+
+                            {/* Complete Batch Button when COPs match */}
+                            {isCopsMatched && (
+                              <div style={{ margin: '24px 0 16px', display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                <button
+                                  type="button"
+                                  className="btn btn-primary"
+                                  onClick={handleCompleteBatch}
+                                  style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    fontSize: '15px',
+                                    fontWeight: 600,
+                                    borderRadius: 12,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 8,
+                                    background: '#10b981',
+                                    borderColor: '#10b981',
+                                  }}
+                                >
+                                  ✓ Complete Batch
+                                </button>
+                              </div>
+                            )}
 
                             {/* Floating Action Button (FAB) */}
                             {(!currentBatchData?.machine || currentBatchData.machine.length < 10) && (
