@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { QrCode } from 'lucide-react';
+import { QrCode, X, Check } from 'lucide-react';
 import { useApi } from '../../hooks/useApi';
 import { useToast } from '../../context/ToastContext';
 import QrScannerModal from '../../components/QrScannerModal';
@@ -44,7 +44,7 @@ export default function BatchLogPage() {
   const [showManual, setShowManual] = useState(false);
   const [manualInput, setManualInput] = useState('');
   const [saving, setSaving] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(true);
 
   // 1. Fetch pending pool (up to ~80 rows where file_number IS NULL)
   const fetchPendingPool = useCallback(async () => {
@@ -124,10 +124,10 @@ export default function BatchLogPage() {
     addToast(`Staged ${match.uid} as ${fileNumber}-${assignedNum}`, 'success');
   };
 
-  const removeStagedRow = (idx: number) => {
+  const removeStagedRow = (originalIdx: number) => {
     setStaging((prev) => {
       const nextArr = [...prev];
-      nextArr.splice(idx, 1);
+      nextArr.splice(originalIdx, 1);
       // Re-sequence numbers so papers remain contiguous
       return nextArr.map((r, i) => ({ ...r, num: baseNextPaperNum + i }));
     });
@@ -203,34 +203,40 @@ export default function BatchLogPage() {
     }
   };
 
+  // Reversed staging list (newest scanned at the top)
+  const reversedStaging = staging.slice().reverse();
+
   return (
     <div
       style={{
         background: '#101010',
         color: '#ececec',
-        minHeight: '100vh',
-        padding: '20px 16px 40px',
+        height: '100%',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        padding: '20px 16px 120px',
         maxWidth: 520,
         margin: '0 auto',
         fontFamily: "'IBM Plex Sans', sans-serif",
+        boxSizing: 'border-box',
       }}
     >
+      {/* Sentence-case plain header title matching Track page */}
       <header
         style={{
           display: 'flex',
-          alignItems: 'baseline',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          marginBottom: 18,
+          marginBottom: 20,
         }}
       >
         <h1
           style={{
-            fontSize: 15,
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-            color: '#8a8a8a',
+            fontSize: 20,
             fontWeight: 600,
+            color: '#ececec',
             margin: 0,
+            letterSpacing: '-0.01em',
           }}
         >
           Batch Log
@@ -239,7 +245,9 @@ export default function BatchLogPage() {
           style={{
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: 12,
+            fontWeight: 600,
             color: '#ececec',
+            background: '#1a1a1a',
             border: '1px solid #333333',
             borderRadius: 20,
             padding: '3px 10px',
@@ -267,6 +275,7 @@ export default function BatchLogPage() {
             color: '#8a8a8a',
             marginBottom: 6,
             display: 'block',
+            fontWeight: 500,
           }}
         >
           File Number
@@ -292,10 +301,10 @@ export default function BatchLogPage() {
                 background: '#232323',
                 border: '1px solid #333333',
                 color: '#ececec',
-                width: 40,
-                height: 40,
+                width: 42,
+                height: 42,
                 borderRadius: 10,
-                fontSize: 18,
+                fontSize: 20,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -398,125 +407,107 @@ export default function BatchLogPage() {
         )}
       </div>
 
-      {/* Section Title */}
+      {/* Section Subhead */}
       <div
         style={{
           fontSize: 11,
           textTransform: 'uppercase',
           letterSpacing: '0.08em',
           color: '#8a8a8a',
-          margin: '22px 0 8px 4px',
+          margin: '22px 0 10px 4px',
           display: 'flex',
           justifyContent: 'space-between',
+          fontWeight: 600,
         }}
       >
         <span>
-          Staged this file <span style={{ color: '#ececec' }}>{staging.length}</span>
+          Staged this file <span style={{ color: '#ececec' }}>({staging.length})</span>
         </span>
         <span>Next: {fileNumber}-{currentNextPaperNum}</span>
       </div>
 
-      {/* Staging Table Card */}
-      <div
-        style={{
-          background: '#1a1a1a',
-          border: '1px solid #333333',
-          borderRadius: 14,
-          padding: 0,
-          overflow: 'hidden',
-        }}
-      >
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th
+      {/* Staged Cards List (Newest First) */}
+      <div style={{ marginBottom: 14 }}>
+        {reversedStaging.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              color: '#8a8a8a',
+              fontSize: 13,
+              padding: '28px 16px',
+              background: '#1a1a1a',
+              border: '1px solid #333333',
+              borderRadius: 14,
+            }}
+          >
+            No papers scanned yet for this file.
+          </div>
+        ) : (
+          reversedStaging.map((r, reverseIdx) => {
+            const originalIndex = staging.length - 1 - reverseIdx;
+            return (
+              <div
+                key={`${r.uid}-${r.num}`}
                 style={{
-                  textAlign: 'left',
-                  fontSize: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  color: '#8a8a8a',
-                  fontWeight: 600,
-                  padding: '8px 10px',
-                  borderBottom: '1px solid #333333',
+                  background: '#1a1a1a',
+                  border: '1px solid #333333',
+                  borderRadius: 14,
+                  padding: 16,
+                  marginBottom: 10,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
                 }}
               >
-                UID
-              </th>
-              <th
-                style={{
-                  textAlign: 'left',
-                  fontSize: 10,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  color: '#8a8a8a',
-                  fontWeight: 600,
-                  padding: '8px 10px',
-                  borderBottom: '1px solid #333333',
-                }}
-              >
-                Paper #
-              </th>
-              <th
-                style={{
-                  width: 36,
-                  borderBottom: '1px solid #333333',
-                }}
-              />
-            </tr>
-          </thead>
-          <tbody>
-            {staging.map((r, i) => (
-              <tr key={`${r.uid}-${i}`} style={{ borderBottom: i === staging.length - 1 ? 'none' : '1px solid #333333' }}>
-                <td
-                  style={{
-                    padding: 10,
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    fontSize: 13,
-                    color: '#ececec',
-                    wordBreak: 'break-all',
-                  }}
-                >
-                  {r.uid}
-                </td>
-                <td
-                  style={{
-                    padding: 10,
-                    fontFamily: "'IBM Plex Mono', monospace",
-                    fontSize: 13,
-                    color: '#ececec',
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {fileNumber}-{r.num}
-                </td>
-                <td style={{ padding: 10, textAlign: 'right' }}>
+                {/* Header row with Record Badge (top-left) & Remove button (top-right) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span
+                    style={{
+                      fontFamily: "'IBM Plex Mono', monospace",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: '#ececec',
+                      background: '#232323',
+                      padding: '4px 10px',
+                      borderRadius: 6,
+                      border: '1px solid #444444',
+                    }}
+                  >
+                    {fileNumber}-{r.num}
+                  </span>
                   <button
                     type="button"
-                    onClick={() => removeStagedRow(i)}
+                    onClick={() => removeStagedRow(originalIndex)}
                     style={{
                       background: 'none',
                       border: 'none',
                       color: '#8a8a8a',
                       fontSize: 16,
                       cursor: 'pointer',
-                      padding: 4,
+                      padding: '2px 6px',
+                      display: 'flex',
+                      alignItems: 'center',
                     }}
                     aria-label="Remove"
+                    title="Remove paper"
                   >
-                    ✕
+                    <X size={16} />
                   </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
 
-        {staging.length === 0 && (
-          <div style={{ textAlign: 'center', color: '#8a8a8a', fontSize: 13, padding: '26px 10px' }}>
-            No papers scanned yet for this file.
-          </div>
+                {/* Details row matching Track label style */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8a8a8a', fontWeight: 600 }}>
+                    UID
+                  </span>
+                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#ececec', wordBreak: 'break-all', fontWeight: 500 }}>
+                    {r.uid}
+                  </span>
+                </div>
+              </div>
+            );
+          })
         )}
       </div>
 
@@ -535,18 +526,18 @@ export default function BatchLogPage() {
           fontSize: 15,
           fontWeight: 700,
           cursor: staging.length === 0 || saving ? 'not-allowed' : 'pointer',
-          marginTop: 12,
+          marginBottom: 20,
           opacity: staging.length === 0 || saving ? 0.35 : 1,
         }}
       >
         {saving ? 'Saving…' : 'Confirm & Save to Database'}
       </button>
 
-      {/* Confirmed History Dropdown */}
+      {/* Confirmed History Section */}
       <details
         open={historyOpen}
         onToggle={(e) => setHistoryOpen((e.target as HTMLDetailsElement).open)}
-        style={{ marginTop: 22 }}
+        style={{ marginTop: 10 }}
       >
         <summary
           style={{
@@ -555,89 +546,83 @@ export default function BatchLogPage() {
             textTransform: 'uppercase',
             letterSpacing: '0.08em',
             color: '#8a8a8a',
-            margin: '0 0 8px 4px',
+            margin: '0 0 10px 4px',
+            fontWeight: 600,
           }}
         >
           Confirmed history ({history.length})
         </summary>
-        <div
-          style={{
-            background: '#1a1a1a',
-            border: '1px solid #333333',
-            borderRadius: 14,
-            padding: 0,
-            overflow: 'hidden',
-          }}
-        >
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th
+
+        {history.length === 0 ? (
+          <div
+            style={{
+              textAlign: 'center',
+              color: '#8a8a8a',
+              fontSize: 13,
+              padding: '24px 16px',
+              background: '#1a1a1a',
+              border: '1px solid #333333',
+              borderRadius: 14,
+            }}
+          >
+            Nothing confirmed yet.
+          </div>
+        ) : (
+          history.slice(0, 50).map((h, idx) => (
+            <div
+              key={`${h.record}-${h.uid}-${idx}`}
+              style={{
+                background: '#1a1a1a',
+                border: '1px solid #333333',
+                borderRadius: 14,
+                padding: 16,
+                marginBottom: 10,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12,
+              }}
+            >
+              {/* Header row with Record Badge (top-left) & Confirmed Status (top-right) */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span
                   style={{
-                    textAlign: 'left',
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
-                    color: '#8a8a8a',
+                    fontFamily: "'IBM Plex Mono', monospace",
+                    fontSize: 12,
                     fontWeight: 600,
-                    padding: '8px 10px',
-                    borderBottom: '1px solid #333333',
+                    color: '#ececec',
+                    background: '#232323',
+                    padding: '4px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #444444',
                   }}
                 >
-                  Record
-                </th>
-                <th
+                  {h.record}
+                </span>
+                <span
                   style={{
-                    textAlign: 'left',
-                    fontSize: 10,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.06em',
+                    fontSize: 11,
                     color: '#8a8a8a',
-                    fontWeight: 600,
-                    padding: '8px 10px',
-                    borderBottom: '1px solid #333333',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
                   }}
                 >
+                  <Check size={13} /> Confirmed
+                </span>
+              </div>
+
+              {/* Details row matching Track label style */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <span style={{ fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#8a8a8a', fontWeight: 600 }}>
                   UID
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.slice(0, 50).map((h, idx) => (
-                <tr key={`${h.record}-${h.uid}-${idx}`} style={{ borderBottom: idx === history.length - 1 ? 'none' : '1px solid #333333' }}>
-                  <td
-                    style={{
-                      padding: 10,
-                      fontFamily: "'IBM Plex Mono', monospace",
-                      fontSize: 13,
-                      color: '#ececec',
-                      fontWeight: 600,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {h.record}
-                  </td>
-                  <td
-                    style={{
-                      padding: 10,
-                      fontFamily: "'IBM Plex Mono', monospace",
-                      fontSize: 13,
-                      color: '#8a8a8a',
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    {h.uid}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {history.length === 0 && (
-            <div style={{ textAlign: 'center', color: '#8a8a8a', fontSize: 13, padding: '26px 10px' }}>
-              Nothing confirmed yet.
+                </span>
+                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: '#ececec', wordBreak: 'break-all', fontWeight: 500 }}>
+                  {h.uid}
+                </span>
+              </div>
             </div>
-          )}
-        </div>
+          ))
+        )}
       </details>
 
       <QrScannerModal
