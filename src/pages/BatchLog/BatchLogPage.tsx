@@ -39,7 +39,7 @@ export default function BatchLogPage() {
   const [qrOpen, setQrOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // 1. Fetch pending pool (up to ~80 rows where file_number IS NULL)
+  // 1. Fetch pending pool (all rows where file_number IS NULL)
   const fetchPendingPool = useCallback(async () => {
     setLoadingPending(true);
     try {
