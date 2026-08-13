@@ -101,7 +101,7 @@ export default function BatchLogPage() {
     // Match scanned UID against pending pool (instant local check)
     const match = pendingPool.find((p) => p.uid.toLowerCase() === cleanUid.toLowerCase());
     if (!match) {
-      addToast(`Error: Paper "${cleanUid}" is not in pending pool (unknown, unconfirmed, or already assigned)`, 'error');
+      addToast(`Error: Batch details for "${cleanUid}" are incomplete or unconfirmed — complete the batch before logging to file.`, 'error');
       return false;
     }
 
