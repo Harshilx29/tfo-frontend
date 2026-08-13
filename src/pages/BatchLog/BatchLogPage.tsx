@@ -81,9 +81,10 @@ export default function BatchLogPage() {
   const currentNextPaperNum = baseNextPaperNum + staging.length;
 
   // Add paper UID to staging after validating against pending pool
-  const addStagedRow = (scannedUid: string) => {
+  // Returns true if successfully staged without error, false on failure
+  const addStagedRow = (scannedUid: string): boolean => {
     let cleanUid = scannedUid.trim();
-    if (!cleanUid) return;
+    if (!cleanUid) return false;
 
     // Strip leading "TFO=" prefix if present (e.g. TFO=26-1 -> 26-1, TFO=26-35 -> 26-35)
     const tfoMatch = cleanUid.match(/^TFO=(.+)$/i);
@@ -94,14 +95,14 @@ export default function BatchLogPage() {
     // Check if in staging already
     if (staging.some((r) => r.uid.toLowerCase() === cleanUid.toLowerCase())) {
       addToast(`UID "${cleanUid}" is already in staging`, 'error');
-      return;
+      return false;
     }
 
     // Match scanned UID against pending pool (instant local check)
     const match = pendingPool.find((p) => p.uid.toLowerCase() === cleanUid.toLowerCase());
     if (!match) {
-      addToast(`Error: Paper "${cleanUid}" is not in pending pool (unknown or already assigned)`, 'error');
-      return;
+      addToast(`Error: Paper "${cleanUid}" is not in pending pool (unknown, unconfirmed, or already assigned)`, 'error');
+      return false;
     }
 
     const assignedNum = currentNextPaperNum;
@@ -110,6 +111,7 @@ export default function BatchLogPage() {
       { id: match.id, uid: match.uid, num: baseNextPaperNum + prev.length },
     ]);
     addToast(`Staged ${match.uid} as ${fileNumber}-${assignedNum}`, 'success');
+    return true;
   };
 
   const removeStagedRow = (originalIdx: number) => {
@@ -418,8 +420,14 @@ export default function BatchLogPage() {
         validationErrorMessage="Invalid QR format. Expected TFO=YY-Number (e.g. TFO=26-1 or TFO=26-35)"
         hintText="Scan a paper QR code starting with 'TFO=' (e.g. TFO=26-1 or TFO=26-35)"
         onScanSuccess={(scannedText) => {
-          addStagedRow(scannedText);
+          const success = addStagedRow(scannedText);
           setQrOpen(false);
+          if (success) {
+            // Re-open QR scanner directly for rapid continuous scanning
+            setTimeout(() => {
+              setQrOpen(true);
+            }, 250);
+          }
         }}
       />
     </div>
