@@ -197,9 +197,9 @@ export default function TFOStatusPage() {
                   <span className={`tfo-status-dot${isRunning ? ' running' : ' idle'}`} />
                 </div>
 
-                {/* Position A: Yarn Type / Vendor (where S/Z was) */}
-                <div className={`tfo-card-vendor${isRunning ? '' : ' muted'}`} style={{ margin: '6px 0 4px', fontSize: '11px', fontWeight: 500 }}>
-                  {machine.vendor_name || '—'}
+                {/* Position A: Yarn Type (e.g. "Poly 40s", "Cotton 30s") below UID */}
+                <div className={`tfo-card-vendor${isRunning ? '' : ' muted'}`} style={{ margin: '6px 0 4px', fontSize: '11px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {activeBatch?.yarn_type || '—'}
                 </div>
 
                 {/* Position B: TPM (where Yarn Type was) */}

@@ -5,6 +5,7 @@ import socket from '../lib/socket';
 
 export interface ActiveBatch {
   uid: string;
+  yarn_type: string | null;
   tpm: number | null;
   loading_date: string | null;
   color_s: { name: string; hex_code: string | null } | null;
