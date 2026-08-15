@@ -3,6 +3,14 @@ import { useApi } from '../hooks/useApi';
 import { useAuth } from './AuthContext';
 import socket from '../lib/socket';
 
+export interface ActiveBatch {
+  uid: string;
+  tpm: number | null;
+  loading_date: string | null;
+  color_s: { name: string; hex_code: string | null } | null;
+  color_z: { name: string; hex_code: string | null } | null;
+}
+
 export interface Machine {
   id: string;
   machine_number: number;
@@ -13,6 +21,7 @@ export interface Machine {
   enabled: boolean;
   occupancy_status: 'free' | 'loaded';
   created_at: string;
+  active_batch?: ActiveBatch | null;
 }
 
 interface MachineDataContextValue {

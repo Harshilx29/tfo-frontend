@@ -173,11 +173,73 @@ export default function TFOStatusPage() {
                       {pad2(machine.machine_number)}
                     </div>
                     <div className="tfo-card-sub">
-                      {machine.max_capacity != null ? `Cap: ${machine.max_capacity}` : '—'}
+                      {machine.active_batch?.tpm ? `${machine.active_batch.tpm} TPM` : (machine.max_capacity != null ? `Cap: ${machine.max_capacity}` : '—')}
                     </div>
                   </div>
                   <span className={`tfo-status-dot${running ? ' running' : ' idle'}`} />
                 </div>
+
+                {/* S/Z Twist Color Chips */}
+                {running && machine.active_batch && (machine.active_batch.color_s || machine.active_batch.color_z) && (
+                  <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', margin: '4px 0 8px' }}>
+                    {machine.active_batch.color_s && (
+                      <span
+                        title={`S-Twist: ${machine.active_batch.color_s.name}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '9px',
+                          fontWeight: 600,
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: '#16161c',
+                          border: '1px solid #262630',
+                          color: '#d4d4d8',
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            backgroundColor: machine.active_batch.color_s.hex_code || '#a1a1aa',
+                            boxShadow: machine.active_batch.color_s.hex_code ? `0 0 4px ${machine.active_batch.color_s.hex_code}` : undefined,
+                          }}
+                        />
+                        S
+                      </span>
+                    )}
+                    {machine.active_batch.color_z && (
+                      <span
+                        title={`Z-Twist: ${machine.active_batch.color_z.name}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          fontSize: '9px',
+                          fontWeight: 600,
+                          padding: '1px 5px',
+                          borderRadius: '4px',
+                          background: '#16161c',
+                          border: '1px solid #262630',
+                          color: '#d4d4d8',
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: '50%',
+                            backgroundColor: machine.active_batch.color_z.hex_code || '#a1a1aa',
+                            boxShadow: machine.active_batch.color_z.hex_code ? `0 0 4px ${machine.active_batch.color_z.hex_code}` : undefined,
+                          }}
+                        />
+                        Z
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 {/* Bottom data row */}
                 <div className="tfo-card-bottom">
