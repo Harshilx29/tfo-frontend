@@ -1,9 +1,13 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
 /* ================================================================
    TRACK MANAGER — Global Design System (Minimalism Theme)
    Font: Inter | Palette: near-monochrome | 4px grid
    ================================================================ */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 
 /* Hide scrollbar globally for all elements while keeping scroll functionality */
 ::-webkit-scrollbar {
