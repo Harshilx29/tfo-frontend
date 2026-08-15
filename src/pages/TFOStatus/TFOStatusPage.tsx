@@ -197,63 +197,72 @@ export default function TFOStatusPage() {
                   <span className={`tfo-status-dot${isRunning ? ' running' : ' idle'}`} />
                 </div>
 
-                {/* S/Z Twist Color Badges */}
-                {isRunning && activeBatch && (activeBatch.color_s || activeBatch.color_z) ? (
-                  <div style={{ display: 'flex', gap: '4px', margin: '4px 0 8px' }}>
-                    {activeBatch.color_s && (
-                      <span
-                        title={`S-Twist: ${activeBatch.color_s.name}`}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '15px',
-                          height: '15px',
-                          borderRadius: '3px',
-                          fontSize: '9px',
-                          fontWeight: 900,
-                          color: '#ffffff',
-                          backgroundColor: activeBatch.color_s.hex_code ? `${activeBatch.color_s.hex_code}33` : 'rgba(234, 179, 8, 0.25)',
-                          border: `1px solid ${activeBatch.color_s.hex_code || '#eab308'}`,
-                          boxShadow: activeBatch.color_s.hex_code ? `0 0 4px ${activeBatch.color_s.hex_code}66` : undefined,
-                        }}
-                      >
-                        S
-                      </span>
-                    )}
-                    {activeBatch.color_z && (
-                      <span
-                        title={`Z-Twist: ${activeBatch.color_z.name}`}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          width: '15px',
-                          height: '15px',
-                          borderRadius: '3px',
-                          fontSize: '9px',
-                          fontWeight: 900,
-                          color: '#ffffff',
-                          backgroundColor: activeBatch.color_z.hex_code ? `${activeBatch.color_z.hex_code}33` : 'rgba(37, 99, 235, 0.25)',
-                          border: `1px solid ${activeBatch.color_z.hex_code || '#2563eb'}`,
-                          boxShadow: activeBatch.color_z.hex_code ? `0 0 4px ${activeBatch.color_z.hex_code}66` : undefined,
-                        }}
-                      >
-                        Z
-                      </span>
-                    )}
-                  </div>
-                ) : null}
+                {/* Position A: Yarn Type / Vendor (where S/Z was) */}
+                <div className={`tfo-card-vendor${isRunning ? '' : ' muted'}`} style={{ margin: '6px 0 4px', fontSize: '11px', fontWeight: 500 }}>
+                  {machine.vendor_name || '—'}
+                </div>
 
-                {/* Bottom data row */}
-                <div className="tfo-card-bottom">
-                  <div className={`tfo-card-vendor${isRunning ? '' : ' muted'}`}>
-                    {machine.vendor_name || '—'}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px', fontSize: '9px', color: '#52525b' }}>
-                    <span>{activeBatch?.tpm ? `${activeBatch.tpm} TPM` : '-'}</span>
-                    <span>{loadingDateDisplay || '-'}</span>
-                  </div>
+                {/* Position B: TPM (where Yarn Type was) */}
+                <div style={{ fontSize: '10px', color: isRunning ? '#a1a1aa' : '#52525b', borderTop: '1px solid #18181b', paddingTop: '6px', marginBottom: '8px' }}>
+                  {activeBatch?.tpm ? `${activeBatch.tpm} TPM` : '—'}
+                </div>
+
+                {/* Bottom row: Position C (Loading Date left) & Position D (S/Z Badges right) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                  {/* Position C: Loading Date (where TPM was) */}
+                  <span style={{ fontSize: '9px', color: isRunning ? '#71717a' : '#3f3f46', fontFamily: 'monospace' }}>
+                    {loadingDateDisplay || '-'}
+                  </span>
+
+                  {/* Position D: S & Z Twist Badges (where Loading Date was) */}
+                  {isRunning && activeBatch && (activeBatch.color_s || activeBatch.color_z) ? (
+                    <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
+                      {activeBatch.color_s && (
+                        <span
+                          title={`S-Twist: ${activeBatch.color_s.name}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '3px',
+                            fontSize: '9px',
+                            fontWeight: 900,
+                            color: '#ffffff',
+                            backgroundColor: activeBatch.color_s.hex_code ? `${activeBatch.color_s.hex_code}33` : 'rgba(234, 179, 8, 0.25)',
+                            border: `1px solid ${activeBatch.color_s.hex_code || '#eab308'}`,
+                            boxShadow: activeBatch.color_s.hex_code ? `0 0 4px ${activeBatch.color_s.hex_code}66` : undefined,
+                          }}
+                        >
+                          S
+                        </span>
+                      )}
+                      {activeBatch.color_z && (
+                        <span
+                          title={`Z-Twist: ${activeBatch.color_z.name}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: '16px',
+                            height: '16px',
+                            borderRadius: '3px',
+                            fontSize: '9px',
+                            fontWeight: 900,
+                            color: '#ffffff',
+                            backgroundColor: activeBatch.color_z.hex_code ? `${activeBatch.color_z.hex_code}33` : 'rgba(37, 99, 235, 0.25)',
+                            border: `1px solid ${activeBatch.color_z.hex_code || '#2563eb'}`,
+                            boxShadow: activeBatch.color_z.hex_code ? `0 0 4px ${activeBatch.color_z.hex_code}66` : undefined,
+                          }}
+                        >
+                          Z
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '9px', color: '#3f3f46' }}>-</span>
+                  )}
                 </div>
               </div>
             );
