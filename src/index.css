@@ -2407,7 +2407,10 @@ tbody tr:hover { background: var(--surface-2); }
 
 /* ── Root ── */
 .tfo-status-root {
-  min-height: 100vh;
+  flex: 1;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   background: #060608;
   color: var(--text-muted);
   font-family: var(--font, 'Inter', sans-serif);
@@ -2587,6 +2590,10 @@ tbody tr:hover { background: var(--surface-2); }
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+}
+@media (max-width: 480px) {
+  .tfo-status-header-inner { padding: 10px 12px 8px; }
+  .tfo-status-grid { padding: 12px 12px 90px; gap: 6px; }
 }
 @media (min-width: 420px)  { .tfo-status-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (min-width: 560px)  { .tfo-status-grid { grid-template-columns: repeat(5, 1fr); } }

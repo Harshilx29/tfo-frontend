@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { X, FileText, History } from 'lucide-react';
 import { useMachineData, Machine } from '../../context/MachineDataContext';
 
@@ -14,14 +14,18 @@ export default function TFOStatusPage() {
   const [filter, setFilter] = useState<'All' | 'Running' | 'Idle'>('All');
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
   const [isScrolled, setIsScrolled] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   // ── Sticky header scroll effect (hysteresis to avoid jitter) ─────────────
   useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
     let ticking = false;
     const handleScroll = () => {
       if (!ticking) {
         window.requestAnimationFrame(() => {
-          const y = window.scrollY;
+          const y = el.scrollTop;
           setIsScrolled((prev) => {
             if (!prev && y > 150) return true;
             if (prev && y < 20) return false;
@@ -32,14 +36,20 @@ export default function TFOStatusPage() {
         ticking = true;
       }
     };
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // ── Lock body scroll when drawer open ────────────────────────────────────
+  // ── Lock container/body scroll when drawer open ──────────────────────────
   useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.style.overflowY = selectedMachine ? 'hidden' : 'auto';
+    }
     document.body.style.overflow = selectedMachine ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    return () => {
+      if (containerRef.current) containerRef.current.style.overflowY = 'auto';
+      document.body.style.overflow = '';
+    };
   }, [selectedMachine]);
 
   // ── Derived stats ─────────────────────────────────────────────────────────
@@ -48,8 +58,7 @@ export default function TFOStatusPage() {
     const running = enabled.filter((m) => m.occupancy_status === 'loaded').length;
     const idle    = enabled.filter((m) => m.occupancy_status === 'free').length;
     const total   = enabled.length;
-    const runningPct = total === 0 ? 0 : Math.round((running / total) * 100);
-    return { total, running, idle, runningPct };
+    return { total, running, idle, runningPct: total === 0 ? 0 : Math.round((running / total) * 100) };
   }, [machines]);
 
   // ── Filtered + sorted list ────────────────────────────────────────────────
@@ -64,7 +73,7 @@ export default function TFOStatusPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="tfo-status-root">
+    <div className="tfo-status-root" ref={containerRef}>
 
       {/* ── Sticky Header ────────────────────────────────────────────────── */}
       <header className={`tfo-status-header${isScrolled ? ' scrolled' : ''}`}>
@@ -174,11 +183,6 @@ export default function TFOStatusPage() {
                 <div className="tfo-card-bottom">
                   <div className={`tfo-card-vendor${running ? '' : ' muted'}`}>
                     {machine.vendor_name || '—'}
-                  </div>
-                  <div className="tfo-card-meta">
-                    <span className={`tfo-card-status-label${running ? ' running' : ' idle'}`}>
-                      {running ? 'Running' : 'Idle'}
-                    </span>
                   </div>
                 </div>
               </div>

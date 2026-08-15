@@ -38,6 +38,7 @@ export default function BatchLogPage() {
   const [paperInput, setPaperInput] = useState('');
   const [qrOpen, setQrOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [failedHighlightUid, setFailedHighlightUid] = useState<string | null>(null);
 
   // 1. Fetch pending pool (all rows where file_number IS NULL)
   const fetchPendingPool = useCallback(async () => {
@@ -81,7 +82,6 @@ export default function BatchLogPage() {
   const currentNextPaperNum = baseNextPaperNum + staging.length;
 
   // Add paper UID to staging after validating against pending pool
-  // Returns true if successfully staged without error, false on failure
   const addStagedRow = (scannedUid: string): boolean => {
     let cleanUid = scannedUid.trim();
     if (!cleanUid) return false;
@@ -114,6 +114,54 @@ export default function BatchLogPage() {
     return true;
   };
 
+  // Process text input (supports single UID or range like "26-50 to 26-83" or "26-50..26-83")
+  const processInputString = (rawInput: string) => {
+    const text = rawInput.trim();
+    if (!text) return;
+
+    // Check for range patterns: "26-50 to 26-83" or "26-50..26-83"
+    const rangeMatch = text.match(/^(?:TFO=)?(\d+)-(\d+)\s*(?:to|\.\.)\s*(?:TFO=)?(\d+)-(\d+)$/i);
+    const shortRangeMatch = text.match(/^(\d+)\s*(?:to|\.\.)\s*(\d+)$/i);
+
+    if (rangeMatch) {
+      const prefix1 = rangeMatch[1];
+      const startNum = parseInt(rangeMatch[2], 10);
+      const prefix2 = rangeMatch[3];
+      const endNum = parseInt(rangeMatch[4], 10);
+
+      if (prefix1 === prefix2 && !isNaN(startNum) && !isNaN(endNum) && startNum <= endNum) {
+        let addedCount = 0;
+        for (let n = startNum; n <= endNum; n++) {
+          if (addStagedRow(`${prefix1}-${n}`)) addedCount++;
+        }
+        if (addedCount > 0) {
+          addToast(`Staged ${addedCount} paper(s) in range ${prefix1}-${startNum} to ${prefix1}-${endNum}`, 'success');
+        }
+        return;
+      }
+    } else if (shortRangeMatch) {
+      const startNum = parseInt(shortRangeMatch[1], 10);
+      const endNum = parseInt(shortRangeMatch[2], 10);
+      if (!isNaN(startNum) && !isNaN(endNum) && startNum <= endNum) {
+        const sampleUid = pendingPool[0]?.uid;
+        const prefixMatch = sampleUid ? sampleUid.match(/^(\d+)-/) : null;
+        const defaultPrefix = prefixMatch ? prefixMatch[1] : '26';
+
+        let addedCount = 0;
+        for (let n = startNum; n <= endNum; n++) {
+          if (addStagedRow(`${defaultPrefix}-${n}`)) addedCount++;
+        }
+        if (addedCount > 0) {
+          addToast(`Staged ${addedCount} paper(s) in range ${defaultPrefix}-${startNum} to ${defaultPrefix}-${endNum}`, 'success');
+        }
+        return;
+      }
+    }
+
+    // Single UID addition
+    addStagedRow(text);
+  };
+
   const removeStagedRow = (originalIdx: number) => {
     setStaging((prev) => {
       const nextArr = [...prev];
@@ -121,6 +169,17 @@ export default function BatchLogPage() {
       // Re-sequence numbers so papers remain contiguous
       return nextArr.map((r, i) => ({ ...r, num: baseNextPaperNum + i }));
     });
+  };
+
+  // Re-sequence all staged papers contiguously
+  const resequenceStagedRows = () => {
+    setStaging((prev) =>
+      prev.map((r, i) => ({
+        ...r,
+        num: baseNextPaperNum + i,
+      }))
+    );
+    addToast(`Re-sequenced paper numbers contiguously starting from ${fileNumber}-${baseNextPaperNum}`, 'info');
   };
 
   // Switch to a specific File Number (e.g. back to File #1)
@@ -144,6 +203,7 @@ export default function BatchLogPage() {
 
     setFileNumber(parsed);
     setStaging([]);
+    setFailedHighlightUid(null);
     addToast(`Switched to File #${parsed}`, 'info');
   };
 
@@ -158,13 +218,15 @@ export default function BatchLogPage() {
 
     setFileNumber(nextNum);
     setStaging([]);
+    setFailedHighlightUid(null);
     addToast(`Started File #${nextNum}`, 'info');
   };
 
-  // Confirm & Save with conditional update check
+  // Confirm & Save with ATOMIC transaction check (0 partial saves on failure)
   const handleConfirmSave = async () => {
     if (!staging.length || saving) return;
     setSaving(true);
+    setFailedHighlightUid(null);
 
     try {
       const payload = {
@@ -176,27 +238,19 @@ export default function BatchLogPage() {
 
       const res = await api.post<any>('/batch-log/confirm', payload);
 
-      if (res && res.results) {
-        const failed = res.results.filter((r: any) => !r.ok);
-        const succeeded = res.results.filter((r: any) => r.ok);
-
-        if (failed.length > 0) {
-          const conflictUids = failed.map((f: any) => `${f.uid} (${f.error})`).join(', ');
-          addToast(`Conflict detected: ${conflictUids}`, 'error');
-
-          const failedUidSet = new Set(failed.map((f: any) => f.uid.toLowerCase()));
-          setStaging((prev) => prev.filter((r) => failedUidSet.has(r.uid.toLowerCase())));
-        } else {
-          addToast(`Successfully confirmed ${succeeded.length} paper(s) to File #${fileNumber}`, 'success');
-          setStaging([]);
+      if (res && res.error) {
+        // Atomic save failed — 0 database updates occurred. Keep staging intact!
+        addToast(res.error, 'error');
+        if (res.failedUid) {
+          setFailedHighlightUid(res.failedUid.toLowerCase());
         }
       } else {
-        addToast(`Saved ${staging.length} paper(s) to File ${fileNumber}`, 'success');
+        addToast(`Successfully confirmed ${staging.length} paper(s) to File #${fileNumber}`, 'success');
         setStaging([]);
+        setFailedHighlightUid(null);
+        void fetchPendingPool();
+        void fetchNextPaperNumber(fileNumber);
       }
-
-      void fetchPendingPool();
-      void fetchNextPaperNumber(fileNumber);
     } catch (e: unknown) {
       addToast(e instanceof Error ? e.message : 'Failed to save batch log', 'error');
     } finally {
@@ -262,12 +316,12 @@ export default function BatchLogPage() {
             <input
               type="text"
               className="search-input"
-              placeholder="Enter or scan paper UID..."
+              placeholder="Enter UID or range (e.g. 26-50 to 26-83)..."
               value={paperInput}
               onChange={(e) => setPaperInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && paperInput.trim()) {
-                  addStagedRow(paperInput.trim());
+                  processInputString(paperInput.trim());
                   setPaperInput('');
                 }
               }}
@@ -322,7 +376,7 @@ export default function BatchLogPage() {
           </button>
         </div>
 
-        {/* Section Subhead */}
+        {/* Section Subhead with Re-sequence button */}
         <div
           style={{
             padding: '0 16px 8px',
@@ -331,11 +385,34 @@ export default function BatchLogPage() {
             letterSpacing: '0.08em',
             color: 'var(--text-muted)',
             display: 'flex',
+            alignItems: 'center',
             justifyContent: 'space-between',
             fontWeight: 600,
           }}
         >
-          <span>Staged Papers ({staging.length})</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>Staged Papers ({staging.length})</span>
+            {staging.length > 1 && (
+              <button
+                type="button"
+                onClick={resequenceStagedRows}
+                title="Re-sequence all paper numbers contiguously from 1"
+                style={{
+                  background: 'var(--surface-2)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--accent)',
+                  fontSize: '10px',
+                  padding: '1px 6px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  textTransform: 'none',
+                }}
+              >
+                ↻ Re-sequence
+              </button>
+            )}
+          </div>
           <span>Next: {fileNumber}-{currentNextPaperNum}</span>
         </div>
 
@@ -348,6 +425,7 @@ export default function BatchLogPage() {
           <ul className="company-list" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {reversedStaging.map((r, reverseIdx) => {
               const originalIndex = staging.length - 1 - reverseIdx;
+              const isFailed = failedHighlightUid && r.uid.toLowerCase() === failedHighlightUid;
               return (
                 <li
                   key={`${r.uid}-${r.num}`}
@@ -357,13 +435,22 @@ export default function BatchLogPage() {
                     alignItems: 'center',
                     padding: '14px 16px',
                     borderBottom: '1px solid var(--border)',
+                    background: isFailed ? 'rgba(255, 77, 79, 0.15)' : undefined,
+                    borderLeft: isFailed ? '4px solid #ff4d4f' : undefined,
                   }}
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                    <span style={{ fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)", fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>
-                      {fileNumber}-{r.num}
-                    </span>
-                    <span style={{ fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)", fontSize: '12px', color: 'var(--text-muted)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)", fontSize: '14px', fontWeight: 600, color: 'var(--text)' }}>
+                        {fileNumber}-{r.num}
+                      </span>
+                      {isFailed && (
+                        <span style={{ fontSize: '10px', background: '#ff4d4f', color: '#fff', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                          ⚠️ Incomplete / Fix or remove
+                        </span>
+                      )}
+                    </div>
+                    <span style={{ fontFamily: "var(--font-mono, 'IBM Plex Mono', monospace)", fontSize: '12px', color: isFailed ? '#ff4d4f' : 'var(--text-muted)' }}>
                       {r.uid}
                     </span>
                   </div>
@@ -373,7 +460,7 @@ export default function BatchLogPage() {
                     style={{
                       background: 'none',
                       border: 'none',
-                      color: 'var(--text-muted)',
+                      color: isFailed ? '#ff4d4f' : 'var(--text-muted)',
                       cursor: 'pointer',
                       padding: 6,
                       display: 'flex',
