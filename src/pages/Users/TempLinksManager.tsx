@@ -50,7 +50,7 @@ export default function TempLinksManager() {
         label:    label.trim() || null,
         expires_at: expiresAt,
         max_uses: maxUses ? parseInt(maxUses) : null,
-        allowed_pages: ['dashboard', 'track'],
+        allowed_pages: ['dashboard', 'track', 'tfo_status', 'batch_log'],
       });
       addToast('Temp link created', 'success');
       setLabel(''); setExpiresAt(''); setMaxUses('');

@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useApi } from '../hooks/useApi';
 import { useAuth } from './AuthContext';
+import { useTempAccess } from './TempAccessContext';
 import socket from '../lib/socket';
 
 export interface ActiveBatch {
@@ -36,6 +37,7 @@ const MachineDataContext = createContext<MachineDataContextValue | null>(null);
 export function MachineDataProvider({ children }: { children: React.ReactNode }) {
   const api = useApi();
   const { profile } = useAuth();
+  const { isReadOnly } = useTempAccess();
 
   const [machines, setMachines] = useState<Machine[]>(() => {
     try {
@@ -69,18 +71,18 @@ export function MachineDataProvider({ children }: { children: React.ReactNode })
     }
   }, [api]);
 
-  // Initial load — requires machine.view permission (admin or explicit grant)
+  // Initial load — requires machine.view permission or read-only temp access
   useEffect(() => {
-    if (profile && profile.status === 'approved') {
+    if ((profile && profile.status === 'approved') || isReadOnly) {
       void loadMachines();
     } else {
       setMachines([]);
     }
-  }, [profile, loadMachines]);
+  }, [profile, isReadOnly, loadMachines]);
 
   // Realtime updates listener
   useEffect(() => {
-    if (!profile || profile.status !== 'approved') return;
+    if ((!profile || profile.status !== 'approved') && !isReadOnly) return;
 
     const onMachineUpdate = (event: {
       eventType: 'INSERT' | 'UPDATE' | 'DELETE';
